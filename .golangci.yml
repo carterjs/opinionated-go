@@ -1,0 +1,53 @@
+---
+run:
+  go: '1.22'
+  timeout: 5m
+
+linters:
+  enable:
+    # go-fugue custom analyzers
+    - custom
+
+    # Best practices
+    - errcheck
+    - errname
+    - errorlint
+    - vet
+    - ineffassign
+    - gosimple
+    - govet
+    - megacheck
+    - staticcheck
+    - unused
+    - unparam
+
+    # Correctness
+    - asasalint
+    - copyloopvar
+    - defercheck
+    - unconvert
+    - prealloc
+
+    # Code style
+    - gofmt
+    - goimports
+    - misspell
+
+    # Performance
+    - perfsprint
+
+  disable-all: true
+
+custom-linters-config:
+  - name: go-fugue
+    path: github.com/carterjs/opinionated-go
+    description: Opinionated Go conventions analyzer
+
+issues:
+  exclude-rules:
+    - linters:
+        - lll
+      source: "^//go:generate"
+
+  max-issues-per-linter: 0
+  max-same-issues: 0

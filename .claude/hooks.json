@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "hooks": [
+    {
+      "event": "PostToolUse",
+      "tool": "Write",
+      "description": "Run opinionated-go analyzer after file write",
+      "command": "go run . ${file} 2>&1 || true"
+    },
+    {
+      "event": "UserPromptSubmit",
+      "description": "Scan modified files for violations before task start",
+      "command": "go run . ./... 2>&1 || true"
+    },
+    {
+      "event": "Stop",
+      "blocking": true,
+      "description": "Block on hard errors in touched files",
+      "command": "go run . ./... 2>&1 | grep -E '(error|Error)' && exit 1 || exit 0"
+    }
+  ]
+}
