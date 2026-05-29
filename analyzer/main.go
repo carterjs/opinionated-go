@@ -3,12 +3,12 @@ package main
 import (
 	"golang.org/x/tools/go/analysis/multichecker"
 
-	"github.com/carterjs/opinionated-go/concurrency"
-	"github.com/carterjs/opinionated-go/errors"
-	"github.com/carterjs/opinionated-go/naming"
-	"github.com/carterjs/opinionated-go/pkgnames"
-	"github.com/carterjs/opinionated-go/structs"
-	"github.com/carterjs/opinionated-go/testing"
+	"github.com/carterjs/opinionated-go/analyzer/concurrency"
+	"github.com/carterjs/opinionated-go/analyzer/errors"
+	"github.com/carterjs/opinionated-go/analyzer/naming"
+	"github.com/carterjs/opinionated-go/analyzer/pkgnames"
+	"github.com/carterjs/opinionated-go/analyzer/structs"
+	"github.com/carterjs/opinionated-go/analyzer/testing"
 )
 
 func main() {
