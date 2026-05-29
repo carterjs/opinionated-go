@@ -5,7 +5,7 @@ run:
 
 linters:
   enable:
-    # go-fugue custom analyzers
+    # opinionated-go custom analyzers
     - custom
 
     # Best practices
@@ -39,7 +39,7 @@ linters:
   disable-all: true
 
 custom-linters-config:
-  - name: go-fugue
+  - name: opinionated-go
     path: github.com/carterjs/opinionated-go
     description: Opinionated Go conventions analyzer
 

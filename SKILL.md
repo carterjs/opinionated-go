@@ -1,4 +1,4 @@
-# go-fugue
+# opinionated-go
 
 A single subject, stated consistently across every layer. These rules are prescriptive — follow them exactly. When in doubt, do not hedge: apply the rule.
 

@@ -1,14 +1,12 @@
-# go-fugue
+# opinionated-go
 
-> *In a fugue, a single subject is stated by one voice, then taken up by others — each independent, each following the same strict rules of counterpoint, together producing something far richer than any voice alone.*
-
-`go-fugue` is an opinionated Go analyzer, linter, and Claude Code skill that enforces a coherent philosophy for writing Go. Not a collection of best practices to pick and choose from — a single subject, stated consistently across every layer of your codebase.
+An opinionated Go analyzer, linter, and Claude Code skill that enforces a coherent philosophy for writing Go. Not a collection of best practices to pick and choose from — a single subject, stated consistently across every layer of your codebase.
 
 The rules exist because they work. They are prescriptive by design.
 
 ## Philosophy
 
-A well-structured Go codebase resembles a fugue. A data layer states the subject — the foundational theme, the only connection to the outside world. Service layers restate it at different pitches, building on the foundation. Presentation layers — APIs, handlers — enter last, combining all voices into something coherent.
+A well-structured Go codebase follows a clear architectural pattern. A data layer states the foundational theme, the only connection to the outside world. Service layers restate it at different pitches, building on the foundation. Presentation layers — APIs, handlers — enter last, combining all voices into something coherent.
 
 Each layer is independent. Each follows the same rules. The complexity of the whole emerges from their combination, not from any individual layer being complicated.
 
@@ -59,7 +57,7 @@ See `.claude/hooks.json` in this repository for the recommended hook configurati
 
 ## Opinions
 
-`go-fugue` deliberately disagrees with some common Go advice. Where it does, the reasoning is documented. The short version:
+opinionated-go deliberately disagrees with some common Go advice. Where it does, the reasoning is documented. The short version:
 
 - Named return values are banned, not just discouraged
 - `errgroup` is banned — prefer explicit goroutine ownership with `sync.WaitGroup` and `context.WithCancelCause`
