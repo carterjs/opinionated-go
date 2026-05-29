@@ -17,7 +17,7 @@ This is also the philosophy of cellular automata, of Unix pipes, of CSP. Simple 
 ## What's Included
 
 - **`SKILL.md`** — a Claude Code skill that teaches these conventions to AI agents working on your codebase
-- **`fugue` analyzer** — a `go/analysis`-based linter that enforces the rules mechanically, runnable standalone or as a golangci-lint plugin
+- **Analyzer** — a `go/analysis`-based linter that enforces the rules mechanically, runnable standalone or as a golangci-lint plugin
 - **`.golangci.yml`** — an opinionated configuration enabling existing linters that complement the custom analyzer
 - **Claude Code hooks** — `PostToolUse` and `Stop` hook configurations that surface violations in real time during agentic sessions
 
@@ -37,20 +37,20 @@ Add to your project's `.claude/settings.json`:
 
 ```bash
 # Install
-go install github.com/carterjs/opinionated-go@latest
+go install github.com/carterjs/opinionated-go/analyzer@latest
 
 # Check
-fugue ./...
+go run github.com/carterjs/opinionated-go/analyzer@latest ./...
 
 # Fix (where possible)
-fugue -fix ./...
+go run github.com/carterjs/opinionated-go/analyzer@latest -fix ./...
 ```
 
 ### As a git pre-commit hook
 
 ```bash
 #!/bin/sh
-go run github.com/carterjs/opinionated-go@latest ./...
+go run github.com/carterjs/opinionated-go/analyzer@latest ./...
 ```
 
 ### With Claude Code hooks
