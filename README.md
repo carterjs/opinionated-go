@@ -1,6 +1,6 @@
 # opinionated-go
 
-An opinionated Go analyzer, linter, and Claude Code skill that enforces a coherent philosophy for writing Go. Not a collection of best practices to pick and choose from — a single subject, stated consistently across every layer of your codebase.
+An opinionated Go analyzer, linter, and agent skill that enforces a coherent philosophy for writing Go. Not a collection of best practices to pick and choose from — a single subject, stated consistently across every layer of your codebase.
 
 The rules exist because they work. They are prescriptive by design.
 
@@ -14,22 +14,24 @@ This is also the philosophy of cellular automata, of Unix pipes, of CSP. Simple 
 
 ## What's Included
 
-- **`SKILL.md`** — a Claude Code skill that teaches these conventions to AI agents working on your codebase
+- **`SKILL.md`** — an agent skill that teaches these conventions to AI agents working on your codebase
 - **Analyzer** — a `go/analysis`-based linter that enforces the rules mechanically, runnable standalone or as a golangci-lint plugin
 - **`.golangci.yml`** — an opinionated configuration enabling existing linters that complement the custom analyzer
-- **Claude Code hooks** — `PostToolUse` and `Stop` hook configurations that surface violations in real time during agentic sessions
+- **Integration hooks** — Claude Code hook configurations that surface violations in real time during agentic sessions
 
 ## Usage
 
-### As a Claude Code skill
+### As an agent skill
 
-Add to your project's `.claude/settings.json`:
+Add to your agent's configuration:
 
 ```json
 {
   "skills": ["github.com/carterjs/opinionated-go"]
 }
 ```
+
+For Claude Code specifically, add to `.claude/settings.json`.
 
 ### As a standalone analyzer
 
@@ -51,9 +53,9 @@ go run github.com/carterjs/opinionated-go/analyzer@latest -fix ./...
 go run github.com/carterjs/opinionated-go/analyzer@latest ./...
 ```
 
-### With Claude Code hooks
+### With agent hooks
 
-See `.claude/hooks.json` in this repository for the recommended hook configuration.
+See `.claude/hooks.json` in this repository for the Claude Code hook configuration.
 
 ## Opinions
 
