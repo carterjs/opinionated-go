@@ -2,8 +2,6 @@
 
 A single subject, stated consistently across every layer. These rules are prescriptive — follow them exactly. When in doubt, do not hedge: apply the rule.
 
-See `references/examples.md` for code examples demonstrating each rule.
-
 ---
 
 ## Naming
@@ -23,53 +21,19 @@ See `references/examples.md` for code examples demonstrating each rule.
 
 - All exported identifiers must have a godoc comment beginning with the identifier's name.
 - Unexported identifiers: comment only when the purpose is not clear from the name and context alone.
-- Inline comments: only when the *why* is non-obvious — a hidden constraint, subtle invariant, or known workaround. Never use comments to label sections of code.
+- Inline comments: only when the *why* is non-obvious — a hidden constraint, subtle invariant, or known workaround.
 
 ---
 
 ## Error Handling
 
-- **Always wrap with `%w`.** Use `fmt.Errorf("doing X: %w", err)`. Never return a naked `err` directly. The `%w` verb preserves the error chain.
-- **Sentinel errors at package level only.** `var ErrNotFound = errors.New("not found")` at the top of the file. Never `return errors.New("...")` inline.
-- **Typed error structs** when callers need to inspect details beyond a sentinel check.
-- **`errors.Is` / `errors.As` only.** Never string-match on error messages.
-- **Errors always last return value.**
-- **Error strings:** lowercase, no trailing punctuation. `"reading file"` not `"Reading file."`.
-- **Indent error flow.** Return early. Keep the happy path at the left margin.
-- **No `panic` in library code.** Only acceptable in `main` or test setup helpers. Always prefer returning an error.
+See `references/error-handling.md` for detailed error handling patterns and examples.
 
 ---
 
-## Function & Method Design
+## Functions, Methods & Design
 
-- **Maximum 4 parameters.** When more are needed, use a config struct or functional options — only for truly optional configuration, not as a workaround for required arguments.
-- **`context.Context` always first** if present.
-- **`*slog.Logger` always second** if present, consistently named `log` or `logger`.
-- **No boolean parameters.** A boolean parameter means the function does two things. Split it or use a typed option.
-- **No named return values.** Ever. They obscure control flow and invite bare returns.
-- **No `func` parameters.** Never pass a `func()` or callback as a parameter. Define an interface with a method instead. Exception: single-use stdlib callbacks like `sort.Slice` are acceptable.
-- **Return concrete types.** Always return concrete types from functions and constructors. The only exception is `error`. Never return an interface type.
-- **Function length: 60 lines maximum** (excluding tests). A function approaching 60 lines is a signal it is doing too much regardless of whether the limit is reached.
-
----
-
-## Interfaces
-
-- **Interfaces belong to the consumer.** Define interfaces in the package that uses them, not the package that implements them. The data layer never defines the interfaces it satisfies — the service layer does.
-- **Never define an interface unused in the current package.** Speculative interfaces are banned.
-- **Keep interfaces small.** The bigger the interface, the weaker the abstraction.
-- **No `any` / `interface{}` in public APIs** — warn. Use a concrete type or a well-defined interface.
-- **No channels, `sync.WaitGroup`, or `func` types in exported function signatures** — warn. Wrap coordination primitives behind a concrete type or interface.
-
----
-
-## Global State & Configuration
-
-- **`os.Getenv` only in `main`** or a `config` package loaded exclusively by `main`. Domain packages — stores, services, adapters — must never read environment variables directly.
-- **No global `slog` functions.** Never call `slog.Info`, `slog.Error`, `slog.Debug` etc. at the package level. Inject a `*slog.Logger` via constructor or parameter.
-- **No `init()` functions** — warn. Initialization logic belongs in constructors or `main`.
-- **No `errgroup`.** It is banned. Use explicit goroutine creation, `sync.WaitGroup` for lifecycle management, and `context.WithCancelCause` when cancellation with a cause is appropriate.
-- **Dependency injection via constructor arguments or receiver fields.** Never closures capturing external state.
+See `references/functions.md` for detailed guidance on function design, methods, interfaces, and constructors.
 
 ---
 
@@ -92,6 +56,16 @@ See `references/examples.md` for code examples demonstrating each rule.
 
 ---
 
+## Global State & Configuration
+
+- **`os.Getenv` only in `main`** or a `config` package loaded exclusively by `main`. Domain packages — stores, services, adapters — must never read environment variables directly.
+- **No global `slog` functions.** Never call `slog.Info`, `slog.Error`, `slog.Debug` etc. at the package level. Inject a `*slog.Logger` via constructor or parameter.
+- **No `init()` functions.** Initialization logic belongs in constructors or `main`.
+- **No `errgroup`.** Use explicit goroutine creation, `sync.WaitGroup` for lifecycle management, and `context.WithCancelCause` when cancellation with a cause is appropriate.
+- **Dependency injection via constructor arguments or receiver fields.** Never closures capturing external state.
+
+---
+
 ## Package & File Organization
 
 - **Dependencies flow strictly downward:** Presentation → Service → Data. Never import upward or across layers.
@@ -104,11 +78,13 @@ See `references/examples.md` for code examples demonstrating each rule.
   - Prefer extending an existing file over creating a new one.
   - A new file is justified only when a self-contained concept has outgrown its current home.
 - **Delete dead code.** Never leave unused functions, variables, types, or imports.
-- **No `_test.go` file without a corresponding `.go` source file** — error.
+- **No `_test.go` file without a corresponding `.go` source file.**
 
 ---
 
 ## Layered Architecture
+
+See `references/architecture.md` for detailed patterns and examples.
 
 ```
 Presentation  →  Service  →  Data
@@ -122,4 +98,4 @@ Presentation  →  Service  →  Data
 
 ## Testing
 
-If writing or modifying test files, **read `references/testing.md` before proceeding.**
+See `references/testing.md` for complete testing conventions.
