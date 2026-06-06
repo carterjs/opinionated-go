@@ -294,10 +294,32 @@ func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool,
 		body = n.Body
 	}
 
-	checkFunctionParams(pass, params, isTestFile)
+	// Count body statements to determine if this is a short function
+	stmtCount := 0
+	if body != nil {
+		stmtCount = countStmts(body.List)
+	}
+
+	// Only check parameters if function is not very short
+	// Short functions like max(a, b) int { return a } are fine with single letters
+	if stmtCount > 5 {
+		checkFunctionParams(pass, params, isTestFile)
+	}
+
 	if body != nil {
 		checkLocalVariables(pass, body, allowedContexts)
 	}
+}
+
+func countStmts(stmts []ast.Stmt) int {
+	count := 0
+	for _, stmt := range stmts {
+		count++
+		if block, ok := stmt.(*ast.BlockStmt); ok {
+			count += countStmts(block.List)
+		}
+	}
+	return count
 }
 
 func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool) {
@@ -321,6 +343,8 @@ func isIdiomatic(name, paramType string, isTestFile bool) bool {
 	if name == "n" && paramType == "ast.Node" {
 		return true
 	}
+	// Single letters are idiomatic for math/utility functions and other short functions
+	// These are checked at the function level, so this is redundant but kept for clarity
 	return false
 }
 
