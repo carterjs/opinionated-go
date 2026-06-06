@@ -441,10 +441,10 @@ func runContextAndErrorNaming(pass *analysis.Pass) (interface{}, error) {
 			for _, param := range params.List {
 				paramType := typeString(param.Type)
 				for _, name := range param.Names {
-					if paramType == "context.Context" && name.Name != "ctx" {
+					if paramType == "context.Context" && name.Name != "ctx" && name.Name != "_" {
 						pass.Reportf(name.Pos(), "context.Context parameter should be named ctx, not %q", name.Name)
 					}
-					if paramType == "error" && name.Name != "err" {
+					if paramType == "error" && name.Name != "err" && name.Name != "_" {
 						pass.Reportf(name.Pos(), "error parameter should be named err, not %q", name.Name)
 					}
 				}
