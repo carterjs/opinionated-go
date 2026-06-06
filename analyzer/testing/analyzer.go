@@ -10,42 +10,6 @@ import (
 )
 
 var (
-	TestNotTableDriven = &analysis.Analyzer{
-		Name:     "test_not_table_driven",
-		Doc:      "warn on non-table-driven tests",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runTestNotTableDriven,
-	}
-	LoopVariableNaming = &analysis.Analyzer{
-		Name:     "loop_variable_naming",
-		Doc:      "error on loop variable not named test",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runLoopVariableNaming,
-	}
-	LoopVariableReassigned = &analysis.Analyzer{
-		Name:     "loop_variable_reassigned",
-		Doc:      "error on loop variable reassignment",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runLoopVariableReassigned,
-	}
-	TestNamingViolation = &analysis.Analyzer{
-		Name:     "test_naming_violation",
-		Doc:      "error on test naming violations",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runTestNamingViolation,
-	}
-	CoversUnexported = &analysis.Analyzer{
-		Name:     "covers_unexported",
-		Doc:      "error on tests covering unexported identifiers",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runCoversUnexported,
-	}
-	OrphanedTestFile = &analysis.Analyzer{
-		Name:     "orphaned_test_file",
-		Doc:      "error on orphaned test files",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runOrphanedTestFile,
-	}
 	// t.Context() requires Go 1.20+
 	ContextBackgroundInTest = &analysis.Analyzer{
 		Name:     "context_background_in_test",
@@ -66,12 +30,6 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runStdoutStderrInTest,
 	}
-	SubtestNameFormat = &analysis.Analyzer{
-		Name:     "subtest_name_format",
-		Doc:      "warn on subtest names with underscores or camelCase",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runSubtestNameFormat,
-	}
 	NoSleepInTests = &analysis.Analyzer{
 		Name:     "no_sleep_in_tests",
 		Doc:      "error on time.Sleep in tests (use synctest or test utils instead)",
@@ -79,34 +37,6 @@ var (
 		Run:      runNoSleepInTests,
 	}
 )
-
-func runTestNotTableDriven(pass *analysis.Pass) (interface{}, error) {
-	return nil, nil
-}
-
-func runLoopVariableNaming(pass *analysis.Pass) (interface{}, error) {
-	return nil, nil
-}
-
-func runLoopVariableReassigned(pass *analysis.Pass) (interface{}, error) {
-	return nil, nil
-}
-
-func runTestNamingViolation(pass *analysis.Pass) (interface{}, error) {
-	return nil, nil
-}
-
-func runCoversUnexported(pass *analysis.Pass) (interface{}, error) {
-	return nil, nil
-}
-
-func runOrphanedTestFile(pass *analysis.Pass) (interface{}, error) {
-	isTestFile := len(pass.Files) > 0 && strings.HasSuffix(pass.Fset.File(pass.Files[0].Pos()).Name(), "_test.go")
-	if !isTestFile {
-		return nil, nil
-	}
-	return nil, nil
-}
 
 func runContextBackgroundInTest(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
@@ -147,10 +77,6 @@ func runStdoutStderrInTest(pass *analysis.Pass) (interface{}, error) {
 			pass.Reportf(sel.Pos(), "use t.Output() when an io.Writer is required in tests, not os.Stdout/Stderr")
 		}
 	})
-	return nil, nil
-}
-
-func runSubtestNameFormat(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 

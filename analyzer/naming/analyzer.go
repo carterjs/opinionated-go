@@ -26,13 +26,6 @@ var (
 		Run:      runConsistentReceivers,
 	}
 
-	ExportedCommentFormat = &analysis.Analyzer{
-		Name:     "exported_comment_format",
-		Doc:      "error on comments for exported symbols not starting with the symbol name",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runExportedCommentFormat,
-	}
-
 	ShadowBuiltins = &analysis.Analyzer{
 		Name:     "shadow_builtins",
 		Doc:      "error on declaring functions that shadow Go built-ins",
@@ -526,78 +519,6 @@ func shouldSkipPass(pass *analysis.Pass) bool {
 	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
 	// Skip build cache and generated files
 	return strings.Contains(filename, "/go-build/")
-}
-
-func runExportedCommentFormat(pass *analysis.Pass) (interface{}, error) {
-	// Check function declarations
-	for _, file := range pass.Files {
-		for _, decl := range file.Decls {
-			switch d := decl.(type) {
-			case *ast.FuncDecl:
-				if isExported(d.Name.Name) {
-					checkCommentFormat(pass, d.Name.Name, d.Doc)
-				}
-			case *ast.GenDecl:
-				if d.Doc != nil {
-					// For types and consts/vars
-					for _, spec := range d.Specs {
-						switch s := spec.(type) {
-						case *ast.TypeSpec:
-							if isExported(s.Name.Name) {
-								checkCommentFormat(pass, s.Name.Name, s.Doc)
-							}
-						case *ast.ValueSpec:
-							for _, name := range s.Names {
-								if isExported(name.Name) {
-									checkCommentFormat(pass, name.Name, s.Doc)
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil, nil
-}
-
-func checkCommentFormat(pass *analysis.Pass, symbolName string, doc *ast.CommentGroup) {
-	if doc == nil {
-		return
-	}
-
-	// Get the comment text
-	text := doc.Text()
-	if text == "" {
-		return
-	}
-
-	// Check if comment starts with the symbol name
-	if !strings.HasPrefix(text, symbolName) {
-		pass.Reportf(doc.Pos(), "exported symbol %q must have a comment starting with %q", symbolName, symbolName)
-		return
-	}
-
-	// Check for divider patterns (empty lines or repeated slashes/dashes)
-	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		// Check for empty lines (dividers)
-		if trimmed == "" {
-			if i > 0 && i < len(lines)-1 {
-				pass.Reportf(doc.Pos(), "comments should not have empty lines used as dividers")
-				return
-			}
-		}
-		// Check for repeated slashes or dashes
-		if len(trimmed) >= 3 {
-			if (strings.HasPrefix(trimmed, "///") || strings.HasPrefix(trimmed, "---")) &&
-				(strings.Count(trimmed, "/") >= 3 || strings.Count(trimmed, "-") >= 3) {
-				pass.Reportf(doc.Pos(), "comments should not use repeated slashes or dashes as dividers")
-				return
-			}
-		}
-	}
 }
 
 func runShadowBuiltins(pass *analysis.Pass) (interface{}, error) {

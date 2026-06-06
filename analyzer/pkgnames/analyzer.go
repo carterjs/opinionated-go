@@ -10,12 +10,6 @@ import (
 )
 
 var (
-	UnusedInterface = &analysis.Analyzer{
-		Name:     "unused_interface",
-		Doc:      "error on unused exported interfaces",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runUnusedInterface,
-	}
 	InitFunction = &analysis.Analyzer{
 		Name:     "init_function",
 		Doc:      "warn on init functions",
@@ -23,10 +17,6 @@ var (
 		Run:      runInitFunction,
 	}
 )
-
-func runUnusedInterface(pass *analysis.Pass) (interface{}, error) {
-	return nil, nil
-}
 
 func runInitFunction(pass *analysis.Pass) (interface{}, error) {
 	// Skip generated/cached files

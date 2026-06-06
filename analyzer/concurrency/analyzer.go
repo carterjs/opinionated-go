@@ -16,12 +16,6 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runErrGroupImport,
 	}
-	FireAndForgetGoroutine = &analysis.Analyzer{
-		Name:     "fire_and_forget_goroutine",
-		Doc:      "warn on fire-and-forget goroutines",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runFireAndForgetGoroutine,
-	}
 	ExportedFuncAcceptsChannel = &analysis.Analyzer{
 		Name:     "exported_func_accepts_channel",
 		Doc:      "warn on exported functions accepting channels",
@@ -62,10 +56,6 @@ func runErrGroupImport(pass *analysis.Pass) (interface{}, error) {
 			pass.Reportf(spec.Pos(), "errgroup is banned; use explicit goroutines, sync.WaitGroup, and context.WithCancelCause")
 		}
 	})
-	return nil, nil
-}
-
-func runFireAndForgetGoroutine(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 

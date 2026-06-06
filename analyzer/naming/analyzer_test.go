@@ -18,12 +18,6 @@ func TestConsistentReceivers(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), naming.ConsistentReceivers, "consistentreceivers")
 }
 
-// TODO: Fix test data expectations for ExportedCommentFormat
-// func TestExportedCommentFormat(t *testing.T) {
-// 	t.Parallel()
-// 	analysistest.Run(t, analysistest.TestData(), naming.ExportedCommentFormat, "exportedcomment")
-// }
-
 func TestInitialismCasing(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), naming.InitialismCasing, "initialism")
