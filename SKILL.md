@@ -87,20 +87,18 @@ Presentation  →  Service  →  Data
 
 See `references/testing.md` for complete testing conventions.
 
-## Checking Your Code
+## Enforcing These Rules
 
-These conventions are enforced by the `opinionated-go` analyzer, which is included in this skill. You can run it directly, or use the latest version from GitHub:
+**Check compliance** using the opinionated-go analyzer:
 
 ```bash
-# Using the analyzer from this skill
-go run ./analyzer ./...
-
-# Or using the latest version from GitHub
 go run github.com/carterjs/opinionated-go/analyzer@latest ./...
 ```
 
-To automatically fix violations where possible, add the `-fix` flag:
+**Automatically fix violations** where possible:
 
 ```bash
-go run ./analyzer -fix ./...
+go run github.com/carterjs/opinionated-go/analyzer@latest -fix ./...
 ```
+
+When working on code, apply these rules to every change, and use the analyzer to verify compliance. Refactoring, bug fixes, and new features should all follow this philosophy — there are no exceptions based on circumstance.
