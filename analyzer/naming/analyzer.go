@@ -332,7 +332,7 @@ func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile 
 	for _, param := range params.List {
 		paramType := typeString(param.Type)
 		for _, name := range param.Names {
-			if len(name.Name) == 1 && !isIdiomatic(name.Name, paramType, isTestFile) {
+			if len(name.Name) == 1 && name.Name != "_" && !isIdiomatic(name.Name, paramType, isTestFile) {
 				pass.Reportf(name.Pos(), "parameter %q is too short; use a descriptive name", name.Name)
 			}
 		}
