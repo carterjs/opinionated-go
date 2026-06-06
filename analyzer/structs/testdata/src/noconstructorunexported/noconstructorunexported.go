@@ -1,7 +1,7 @@
 package noconstructorunexported
 
 // Bad: Has unexported fields
-type Database struct { // want "struct has unexported fields but no constructor"
+type Database struct { // want "has unexported fields but no constructor"
 	host     string
 	port     int
 	user     string
@@ -28,7 +28,7 @@ type PublicData struct {
 }
 
 // Bad: Has unexported fields
-type Cache struct { // want "struct has unexported fields but no constructor"
+type Cache struct { // want "has unexported fields but no constructor"
 	mu    interface{}
 	items map[string]interface{}
 	ttl   int
@@ -49,7 +49,7 @@ type Empty struct {
 }
 
 // Bad: Has unexported fields
-type Mixed struct { // want "struct has unexported fields but no constructor"
+type Mixed struct { // want "has unexported fields but no constructor"
 	Name   string
 	secret string
 }

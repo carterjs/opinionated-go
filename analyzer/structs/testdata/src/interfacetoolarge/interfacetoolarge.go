@@ -11,26 +11,40 @@ type ReadCloser interface {
 	Close() error
 }
 
-// Good: 3 methods
-type ReadWriteCloser interface {
-	Read() error
-	Write() error
-	Close() error
-}
-
-// Bad: 4 methods
-type TooLarge interface { // want "has 4 methods"
+// Good: 4 methods
+type ReadWriteCloseSeefer interface {
 	Read() error
 	Write() error
 	Close() error
 	Seek() error
 }
 
-// Bad: 5 methods
-type WayTooLarge interface { // want "has 5 methods"
+// Good: 5 methods
+type ReadWriteCloseSeeker interface {
 	Read() error
 	Write() error
 	Close() error
 	Seek() error
 	Stat() error
+}
+
+// Bad: 6 methods
+type TooLarge interface { // want "has 6 methods"
+	Read() error
+	Write() error
+	Close() error
+	Seek() error
+	Stat() error
+	Truncate() error
+}
+
+// Bad: 7 methods
+type WayTooLarge interface { // want "has 7 methods"
+	Read() error
+	Write() error
+	Close() error
+	Seek() error
+	Stat() error
+	Truncate() error
+	Sync() error
 }

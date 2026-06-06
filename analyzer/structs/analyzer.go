@@ -2,6 +2,7 @@ package structs
 
 import (
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -65,10 +66,10 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runTooManyParameters,
 	}
-	// InterfaceTooLarge warns on interfaces with more than 3 methods.
+	// InterfaceTooLarge warns on interfaces with more than 5 methods.
 	InterfaceTooLarge = &analysis.Analyzer{
 		Name:     "interface_too_large",
-		Doc:      "warn on interfaces with more than 3 methods",
+		Doc:      "warn on interfaces with more than 5 methods",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runInterfaceTooLarge,
 	}
@@ -110,6 +111,53 @@ func runBooleanParameters(pass *analysis.Pass) (interface{}, error) {
 }
 
 func runNoConstructorWithUnexportedFields(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	// First pass: collect all struct types with unexported fields
+	structsWithUnexported := make(map[string]*ast.TypeSpec)
+	inspect.Preorder([]ast.Node{(*ast.TypeSpec)(nil)}, func(node ast.Node) {
+		spec := node.(*ast.TypeSpec)
+		if !isExported(spec.Name.Name) {
+			return
+		}
+
+		st, ok := spec.Type.(*ast.StructType)
+		if !ok || st.Fields == nil {
+			return
+		}
+
+		hasUnexported := false
+		for _, field := range st.Fields.List {
+			if len(field.Names) > 0 && !isExported(field.Names[0].Name) {
+				hasUnexported = true
+				break
+			}
+		}
+
+		if hasUnexported {
+			structsWithUnexported[spec.Name.Name] = spec
+		}
+	})
+
+	// Second pass: find constructors for these structs
+	constructors := make(map[string]bool)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Recv != nil {
+			return // Skip methods
+		}
+		if strings.HasPrefix(fn.Name.Name, "New") && len(fn.Name.Name) > 3 {
+			constructors[fn.Name.Name[3:]] = true // Remove "New" prefix
+		}
+	})
+
+	// Check each struct with unexported fields for a constructor
+	for typeName, spec := range structsWithUnexported {
+		if !constructors[typeName] {
+			pass.Reportf(spec.Name.Pos(), "struct %q has unexported fields but no constructor; add New%s()", typeName, typeName)
+		}
+	}
+
 	return nil, nil
 }
 
@@ -249,8 +297,8 @@ func runInterfaceTooLarge(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		methodCount := len(iface.Methods.List)
-		if methodCount > 3 {
-			pass.Reportf(iface.Pos(), "interface has %d methods; keep interfaces small (3 or fewer)", methodCount)
+		if methodCount > 5 {
+			pass.Reportf(iface.Pos(), "interface has %d methods; keep interfaces small (5 or fewer)", methodCount)
 		}
 	})
 	return nil, nil

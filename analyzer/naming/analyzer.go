@@ -337,7 +337,7 @@ func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile 
 func isIdiomatic(name, paramType string, isTestFile bool) bool {
 	if isTestFile {
 		// Standard testing parameters
-		if name == "t" && (paramType == "testing.T" || paramType == "*testing.T") {
+		if name == "t" && (paramType == "testing.T" || paramType == "*testing.T" || paramType == "testing.TB" || paramType == "*testing.TB") {
 			return true
 		}
 		if name == "b" && (paramType == "testing.B" || paramType == "*testing.B") {

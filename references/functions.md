@@ -216,7 +216,7 @@ type Writer interface {
 
 ## Keep interfaces small
 
-The bigger the interface, the weaker the abstraction. Prefer many small, focused interfaces.
+The bigger the interface, the weaker the abstraction. Prefer many small, focused interfaces. Limit interfaces to 5 or fewer methods.
 
 ```go
 // Do this

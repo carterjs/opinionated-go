@@ -13,6 +13,7 @@ A single subject, stated consistently across every layer. These rules are prescr
 - **Getter methods.** Use the Go idiom: `Name()` not `GetName()`. Setter methods are `SetField()`. Never `Get<Field>()` prefix.
 - **Package names.** Lowercase, single word, no underscores. Must match the directory name. Never `util`, `common`, `helpers`, `shared`, or similar generic names.
 - **File names.** No underscores except `_test.go` and `_<platform>_test.go` patterns. Name files after their primary concept (`store.go`, `schema.go`), never their role (`helpers.go`, `utils.go`).
+- **No stuttering names.** Exported names must not repeat the package name. In package `server`, use `Handler` not `ServerHandler`. In package `user`, use `Store` not `UserStore`.
 
 ## Comments
 
