@@ -5,7 +5,7 @@ func Good() {}
 
 func NoComment() {} // want "exported symbol.*must have a comment"
 
-// This comment doesn't start with the symbol name - want "exported symbol.*must have a comment"
+// wrong comment that doesn't start with the function name - want "exported symbol.*must have a comment"
 func Wrong() {}
 
 // GoodFunction is a multi-line comment
