@@ -308,25 +308,43 @@ func trackForLoopVars(inspect *inspector.Inspector) map[string]bool {
 func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool, allowedContexts map[string]bool) {
 	var params *ast.FieldList
 	var body *ast.BlockStmt
+	var startPos ast.Node
+	var endPos ast.Node
 
 	switch n := node.(type) {
 	case *ast.FuncDecl:
 		params = n.Type.Params
 		body = n.Body
+		startPos = n
+		endPos = n
 	case *ast.FuncLit:
 		params = n.Type.Params
 		body = n.Body
+		startPos = n
+		endPos = n
 	}
 
-	checkFunctionParams(pass, params, isTestFile)
+	// Calculate function scope in lines
+	var funcLines int
+	if startPos != nil && endPos != nil {
+		startLine := pass.Fset.Position(startPos.Pos()).Line
+		endLine := pass.Fset.Position(endPos.End()).Line
+		funcLines = endLine - startLine + 1
+	}
+
+	checkFunctionParams(pass, params, isTestFile, funcLines)
 
 	if body != nil {
 		checkLocalVariables(pass, body, allowedContexts)
 	}
 }
 
-func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool) {
+func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool, funcLines int) {
 	if params == nil {
+		return
+	}
+	// Allow any single-letter parameter name in functions/closures with <= 5 lines
+	if funcLines <= 5 {
 		return
 	}
 	for _, param := range params.List {
