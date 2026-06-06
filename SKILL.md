@@ -1,3 +1,8 @@
+---
+name: opinionated-go
+description: Enforces a coherent, prescriptive philosophy for writing Go
+---
+
 # opinionated-go
 
 A single subject, stated consistently across every layer. These rules are prescriptive — apply them as written.
