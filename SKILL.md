@@ -86,3 +86,17 @@ Presentation  →  Service  →  Data
 ## Testing
 
 See `references/testing.md` for complete testing conventions.
+
+## Checking Your Code
+
+These conventions are enforced by the `opinionated-go` analyzer:
+
+```bash
+go run github.com/carterjs/opinionated-go/analyzer@latest ./...
+```
+
+To automatically fix violations where possible:
+
+```bash
+go run github.com/carterjs/opinionated-go/analyzer@latest -fix ./...
+```
