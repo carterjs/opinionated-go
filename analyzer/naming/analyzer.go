@@ -294,19 +294,7 @@ func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool,
 		body = n.Body
 	}
 
-	// Count actual lines in function body to determine if this is a short function
-	lineCount := 0
-	if body != nil {
-		startLine := pass.Fset.Position(body.Pos()).Line
-		endLine := pass.Fset.Position(body.End()).Line
-		lineCount = endLine - startLine + 1
-	}
-
-	// Only check parameters if function is not very short
-	// Utility functions like max/min with single-letter params are idiomatic
-	if lineCount > 7 {
-		checkFunctionParams(pass, params, isTestFile)
-	}
+	checkFunctionParams(pass, params, isTestFile)
 
 	if body != nil {
 		checkLocalVariables(pass, body, allowedContexts)
@@ -340,29 +328,58 @@ func isIdiomatic(name, paramType string, isTestFile bool) bool {
 }
 
 func checkLocalVariables(pass *analysis.Pass, body *ast.BlockStmt, allowedContexts map[string]bool) {
+	// Track single-letter variable declarations and their usage spans
+	varDecls := make(map[string]token.Pos)  // var name -> declaration position
+	varLastUse := make(map[string]token.Pos) // var name -> last usage position
+
+	// First pass: find all single-letter variable declarations
 	ast.Inspect(body, func(n ast.Node) bool {
 		switch stmt := n.(type) {
 		case *ast.AssignStmt:
 			if stmt.Tok == token.ASSIGN || stmt.Tok == token.DEFINE {
 				for i, lhs := range stmt.Lhs {
 					if ident, ok := lhs.(*ast.Ident); ok && len(ident.Name) == 1 && !allowedContexts[ident.Name] {
-						// Don't flag blank identifier
-						if ident.Name == "_" {
-							continue
-						}
-						// Don't flag type assertions (e.g., x := value.(type))
-						if i < len(stmt.Rhs) {
-							if _, ok := stmt.Rhs[i].(*ast.TypeAssertExpr); ok {
-								continue
+						if ident.Name != "_" {
+							// Don't record type assertions
+							if i < len(stmt.Rhs) {
+								if _, ok := stmt.Rhs[i].(*ast.TypeAssertExpr); ok {
+									continue
+								}
 							}
+							varDecls[ident.Name] = ident.Pos()
 						}
-						pass.Reportf(ident.Pos(), "variable %q is too short; use a descriptive name", ident.Name)
 					}
 				}
 			}
 		}
 		return true
 	})
+
+	// Second pass: find last usage of each variable
+	ast.Inspect(body, func(n ast.Node) bool {
+		if ident, ok := n.(*ast.Ident); ok {
+			if _, isDeclared := varDecls[ident.Name]; isDeclared {
+				varLastUse[ident.Name] = ident.Pos()
+			}
+		}
+		return true
+	})
+
+	// Check if any variable spans more than 5 lines
+	for varName, declPos := range varDecls {
+		lastUsePos, hasUsage := varLastUse[varName]
+		if !hasUsage {
+			continue // Variable not used after declaration
+		}
+
+		declLine := pass.Fset.Position(declPos).Line
+		lastUseLine := pass.Fset.Position(lastUsePos).Line
+		span := lastUseLine - declLine
+
+		if span > 5 {
+			pass.Reportf(declPos, "variable %q is too short and spans %d lines; use a descriptive name", varName, span)
+		}
+	}
 }
 
 func runContextAndErrorNaming(pass *analysis.Pass) (interface{}, error) {
