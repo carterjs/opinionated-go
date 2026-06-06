@@ -8,8 +8,18 @@ func TestLoopVar() {
 	}
 }
 
-func TestParam(x int) { // want "parameter .* is too short"
+// Short function - x is OK because function is <= 5 lines
+func TestParam(x int) {
 	fmt.Println(x)
+}
+
+// Longer function - parameters should be flagged
+func LongFunction(x int, y int) { // want "parameter .* is too short" "parameter .* is too short"
+	fmt.Println(x)
+	fmt.Println(y)
+	fmt.Println(x + y)
+	fmt.Println(x * y)
+	fmt.Println(x - y)
 }
 
 func TestLocalVar() {

@@ -294,32 +294,23 @@ func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool,
 		body = n.Body
 	}
 
-	// Count body statements to determine if this is a short function
-	stmtCount := 0
+	// Count actual lines in function body to determine if this is a short function
+	lineCount := 0
 	if body != nil {
-		stmtCount = countStmts(body.List)
+		startLine := pass.Fset.Position(body.Pos()).Line
+		endLine := pass.Fset.Position(body.End()).Line
+		lineCount = endLine - startLine + 1
 	}
 
 	// Only check parameters if function is not very short
-	// Short functions like max(a, b) int { return a } are fine with single letters
-	if stmtCount > 5 {
+	// Short functions like max(a, b) int { return a } (5 lines) are fine with single letters
+	if lineCount > 5 {
 		checkFunctionParams(pass, params, isTestFile)
 	}
 
 	if body != nil {
 		checkLocalVariables(pass, body, allowedContexts)
 	}
-}
-
-func countStmts(stmts []ast.Stmt) int {
-	count := 0
-	for _, stmt := range stmts {
-		count++
-		if block, ok := stmt.(*ast.BlockStmt); ok {
-			count += countStmts(block.List)
-		}
-	}
-	return count
 }
 
 func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool) {
