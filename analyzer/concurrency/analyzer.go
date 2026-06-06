@@ -2,6 +2,7 @@ package concurrency
 
 import (
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -32,6 +33,24 @@ var (
 		Doc:      "warn on exported functions accepting func parameters",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runExportedFuncAcceptsFunc,
+	}
+	ContextNotFirstArg = &analysis.Analyzer{
+		Name:     "context_not_first_arg",
+		Doc:      "error on context parameter not being first argument",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runContextNotFirstArg,
+	}
+	ContextAsStructField = &analysis.Analyzer{
+		Name:     "context_as_struct_field",
+		Doc:      "error on context.Context as struct field",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runContextAsStructField,
+	}
+	ContextWithNotAssigned = &analysis.Analyzer{
+		Name:     "context_with_not_assigned",
+		Doc:      "error on context.With* calls not assigning return value",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runContextWithNotAssigned,
 	}
 )
 
@@ -88,6 +107,62 @@ func runExportedFuncAcceptsFunc(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
+func runContextNotFirstArg(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}, func(node ast.Node) {
+		var params *ast.FieldList
+		switch n := node.(type) {
+		case *ast.FuncDecl:
+			params = n.Type.Params
+		case *ast.FuncLit:
+			params = n.Type.Params
+		}
+
+		if params == nil || len(params.List) == 0 {
+			return
+		}
+
+		// Check if context is present but not first
+		for i, param := range params.List {
+			if typeString(param.Type) == "context.Context" && i > 0 {
+				pass.Reportf(param.Pos(), "context.Context should be the first parameter")
+			}
+		}
+	})
+	return nil, nil
+}
+
+func runContextAsStructField(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.StructType)(nil)}, func(node ast.Node) {
+		st := node.(*ast.StructType)
+		for _, field := range st.Fields.List {
+			if typeString(field.Type) == "context.Context" {
+				pass.Reportf(field.Pos(), "context.Context should not be a struct field; pass it as a parameter")
+			}
+		}
+	})
+	return nil, nil
+}
+
+func runContextWithNotAssigned(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.ExprStmt)(nil)}, func(node ast.Node) {
+		stmt := node.(*ast.ExprStmt)
+		if call, ok := stmt.X.(*ast.CallExpr); ok {
+			if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "context" {
+					funcName := sel.Sel.Name
+					if strings.HasPrefix(funcName, "With") {
+						pass.Reportf(call.Pos(), "context.%s return value must be assigned", funcName)
+					}
+				}
+			}
+		}
+	})
+	return nil, nil
+}
+
 func isChanType(expr ast.Expr) bool {
 	_, ok := expr.(*ast.ChanType)
 	return ok
@@ -96,4 +171,18 @@ func isChanType(expr ast.Expr) bool {
 func isFuncType(expr ast.Expr) bool {
 	_, ok := expr.(*ast.FuncType)
 	return ok
+}
+
+func typeString(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.SelectorExpr:
+		if ident, ok := t.X.(*ast.Ident); ok {
+			return ident.Name + "." + t.Sel.Name
+		}
+	case *ast.StarExpr:
+		return "*" + typeString(t.X)
+	}
+	return ""
 }

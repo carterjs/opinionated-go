@@ -43,6 +43,9 @@ func main() {
 		concurrency.FireAndForgetGoroutine,
 		concurrency.ExportedFuncAcceptsChannel,
 		concurrency.ExportedFuncAcceptsFunc,
+		concurrency.ContextNotFirstArg,
+		concurrency.ContextAsStructField,
+		concurrency.ContextWithNotAssigned,
 
 		pkgnames.UnusedInterface,
 		pkgnames.InitFunction,
