@@ -7,6 +7,7 @@ import (
 	"github.com/carterjs/opinionated-go/analyzer/errors"
 	"github.com/carterjs/opinionated-go/analyzer/naming"
 	"github.com/carterjs/opinionated-go/analyzer/pkgnames"
+	"github.com/carterjs/opinionated-go/analyzer/refactoring"
 	"github.com/carterjs/opinionated-go/analyzer/structs"
 	"github.com/carterjs/opinionated-go/analyzer/testing"
 )
@@ -61,5 +62,7 @@ func main() {
 		testing.StdoutStderrInTest,
 		testing.SubtestNameFormat,
 		testing.NoSleepInTests,
+
+		refactoring.InlineableFunction,
 	)
 }
