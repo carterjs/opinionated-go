@@ -265,10 +265,15 @@ func runSingleLetterVariables(pass *analysis.Pass) (interface{}, error) {
 	}
 
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	isTestFile := isTestFilePath(pass)
 	allowedContexts := trackForLoopVars(inspect)
 
 	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}, func(node ast.Node) {
+		// Determine if this specific function is in a test file
+		isTestFile := false
+		filename := pass.Fset.File(node.Pos()).Name()
+		if strings.HasSuffix(filename, "_test.go") {
+			isTestFile = true
+		}
 		checkFunctionVariables(pass, node, isTestFile, allowedContexts)
 	})
 
