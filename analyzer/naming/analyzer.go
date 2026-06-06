@@ -308,49 +308,50 @@ func trackForLoopVars(inspect *inspector.Inspector) map[string]bool {
 func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool, allowedContexts map[string]bool) {
 	var params *ast.FieldList
 	var body *ast.BlockStmt
-	var startPos ast.Node
-	var endPos ast.Node
 
 	switch n := node.(type) {
 	case *ast.FuncDecl:
 		params = n.Type.Params
 		body = n.Body
-		startPos = n
-		endPos = n
 	case *ast.FuncLit:
 		params = n.Type.Params
 		body = n.Body
-		startPos = n
-		endPos = n
 	}
 
-	// Calculate function scope in lines
-	var funcLines int
-	if startPos != nil && endPos != nil {
-		startLine := pass.Fset.Position(startPos.Pos()).Line
-		endLine := pass.Fset.Position(endPos.End()).Line
-		funcLines = endLine - startLine + 1
-	}
-
-	checkFunctionParams(pass, params, isTestFile, funcLines)
+	checkFunctionParams(pass, params, isTestFile, body)
 
 	if body != nil {
 		checkLocalVariables(pass, body, allowedContexts)
 	}
 }
 
-func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool, funcLines int) {
-	if params == nil {
+func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool, body *ast.BlockStmt) {
+	if params == nil || body == nil {
 		return
 	}
-	// Allow any single-letter parameter name in functions/closures with <= 5 lines
-	if funcLines <= 5 {
-		return
-	}
+
+	// Build map of parameter usage spans
+	paramUsage := make(map[string]token.Pos)
+	ast.Inspect(body, func(n ast.Node) bool {
+		if ident, ok := n.(*ast.Ident); ok {
+			paramUsage[ident.Name] = ident.Pos()
+		}
+		return true
+	})
+
 	for _, param := range params.List {
 		paramType := typeString(param.Type)
 		for _, name := range param.Names {
 			if len(name.Name) == 1 && name.Name != "_" && !isIdiomatic(name.Name, paramType, isTestFile) {
+				// Check if parameter is used within 5 lines
+				if lastUsePos, used := paramUsage[name.Name]; used {
+					declLine := pass.Fset.Position(name.Pos()).Line
+					lastUseLine := pass.Fset.Position(lastUsePos).Line
+					span := lastUseLine - declLine
+					if span <= 5 {
+						continue // Allow if used within 5 lines
+					}
+				}
 				pass.Reportf(name.Pos(), "parameter %q is too short; use a descriptive name", name.Name)
 			}
 		}

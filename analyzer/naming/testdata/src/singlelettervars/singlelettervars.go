@@ -8,7 +8,7 @@ func TestLoopVar() {
 	}
 }
 
-func TestParam(x int) { // OK: function is 3 lines (<=5), so single letter is allowed
+func TestParam(x int) { // OK: x is used within 5 lines
 	fmt.Println(x)
 }
 
@@ -50,12 +50,12 @@ func TestSmallScopeFunction(x int) bool { // OK: function is <= 5 lines
 }
 
 func TestLargeScopeParam(x int) { // want "parameter .* is too short"
-	fmt.Println(x)
-	fmt.Println(x)
-	fmt.Println(x)
-	fmt.Println(x)
-	fmt.Println(x)
-	fmt.Println(x)
+	fmt.Println(x) // line 1
+	fmt.Println(x) // line 2
+	fmt.Println(x) // line 3
+	fmt.Println(x) // line 4
+	fmt.Println(x) // line 5
+	fmt.Println(x) // line 6 - x used beyond 5 lines
 }
 
 func TestUnderscoreParam(_ int) { // OK: underscore is allowed
