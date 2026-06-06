@@ -65,14 +65,14 @@ func runInlineableFunction(pass *analysis.Pass) (interface{}, error) {
 
 func shouldInline(info *funcData) bool {
 	if info.uses == 0 {
-		return false // Don't inline unused functions
+		return false
 	}
-	// One-liner used fewer than 3 times
-	if info.lineCount == 1 && info.uses < 3 {
+	// Flag single-statement functions used 1-2 times
+	if info.lineCount == 1 && info.uses <= 2 {
 		return true
 	}
-	// Less than 10 lines and used only once
-	if info.lineCount < 10 && info.uses == 1 {
+	// Flag 2-statement functions used only once
+	if info.lineCount <= 2 && info.uses == 1 {
 		return true
 	}
 	return false
@@ -82,8 +82,16 @@ func countFuncLines(fn *ast.FuncDecl) int {
 	if fn.Body == nil {
 		return 0
 	}
-	// Count statements in function body as approximation of lines
-	return countStmts(fn.Body.List)
+	// Estimate lines based on statement count with conservative scaling
+	// Statement count doesn't map directly to lines due to nesting
+	return max(1, countStmts(fn.Body.List)*2)
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func countStmts(stmts []ast.Stmt) int {
@@ -97,7 +105,7 @@ func countStmts(stmts []ast.Stmt) int {
 func countStmt(stmt ast.Stmt) int {
 	switch s := stmt.(type) {
 	case *ast.BlockStmt:
-		return countStmts(s.List)
+		return 1 + countStmts(s.List)
 	case *ast.IfStmt:
 		count := 1
 		if s.Body != nil {
@@ -108,7 +116,7 @@ func countStmt(stmt ast.Stmt) int {
 		}
 		return count
 	case *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt:
-		return 2 // Approximate
+		return 3
 	default:
 		return 1
 	}

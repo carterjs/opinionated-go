@@ -78,6 +78,12 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runNoSleepInTests,
 	}
+	ParallelWithEnv = &analysis.Analyzer{
+		Name:     "parallel_with_env",
+		Doc:      "warn on t.Parallel() with t.Setenv or environment mutations",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runParallelWithEnv,
+	}
 )
 
 func runTestNotTableDriven(pass *analysis.Pass) (interface{}, error) {

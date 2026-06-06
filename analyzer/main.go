@@ -63,6 +63,7 @@ func main() {
 		testing.SubtestNameFormat,
 		testing.NoSleepInTests,
 
-		refactoring.InlineableFunction,
+		// InlineableFunction disabled: line counting needs improvement
+		// refactoring.InlineableFunction,
 	)
 }
