@@ -23,15 +23,19 @@ This is also the philosophy of cellular automata, of Unix pipes, of CSP. Simple 
 
 ### As an agent skill
 
-Add to your agent's configuration:
+**With the `npx skills` CLI:**
+
+```bash
+npx skills add carterjs/opinionated-go
+```
+
+**Or manually:** add to your agent's configuration (e.g., `.claude/settings.json` for Claude Code):
 
 ```json
 {
   "skills": ["github.com/carterjs/opinionated-go"]
 }
 ```
-
-For Claude Code specifically, add to `.claude/settings.json`.
 
 ### As a standalone analyzer
 
