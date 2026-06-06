@@ -303,8 +303,8 @@ func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool,
 	}
 
 	// Only check parameters if function is not very short
-	// Short functions like max(a, b) int { return a } (5 lines) are fine with single letters
-	if lineCount > 5 {
+	// Utility functions like max/min with single-letter params are idiomatic
+	if lineCount > 7 {
 		checkFunctionParams(pass, params, isTestFile)
 	}
 

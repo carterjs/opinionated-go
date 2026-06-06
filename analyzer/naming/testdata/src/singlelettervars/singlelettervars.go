@@ -13,13 +13,15 @@ func TestParam(x int) {
 	fmt.Println(x)
 }
 
-// Longer function - parameters should be flagged
+// Longer function - parameters should be flagged (>7 lines)
 func LongFunction(x int, y int) { // want "parameter .* is too short" "parameter .* is too short"
 	fmt.Println(x)
 	fmt.Println(y)
 	fmt.Println(x + y)
 	fmt.Println(x * y)
 	fmt.Println(x - y)
+	fmt.Println(x)
+	fmt.Println(y)
 }
 
 func TestLocalVar() {
