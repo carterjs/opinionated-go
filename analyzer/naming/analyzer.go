@@ -33,6 +33,13 @@ var (
 		Run:      runExportedCommentFormat,
 	}
 
+	ShadowBuiltins = &analysis.Analyzer{
+		Name:     "shadow_builtins",
+		Doc:      "error on declaring functions that shadow Go built-ins",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runShadowBuiltins,
+	}
+
 	InitialismCasing = &analysis.Analyzer{
 		Name:     "initialism_casing",
 		Doc:      "error on initialisms in wrong case (Id, Url, Http, Api, Json, etc.)",
@@ -549,4 +556,37 @@ func checkCommentFormat(pass *analysis.Pass, symbolName string, doc *ast.Comment
 			}
 		}
 	}
+}
+
+func runShadowBuiltins(pass *analysis.Pass) (interface{}, error) {
+	builtins := map[string]bool{
+		"append":  true,
+		"cap":     true,
+		"close":   true,
+		"complex": true,
+		"copy":    true,
+		"delete":  true,
+		"imag":    true,
+		"len":     true,
+		"make":    true,
+		"new":     true,
+		"panic":   true,
+		"print":   true,
+		"println": true,
+		"real":    true,
+		"recover": true,
+		"max":     true,
+		"min":     true,
+		"clear":   true,
+	}
+
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if builtins[fn.Name.Name] {
+			pass.Reportf(fn.Name.Pos(), "function %q shadows Go built-in; use a different name", fn.Name.Name)
+		}
+	})
+
+	return nil, nil
 }

@@ -16,6 +16,7 @@ func main() {
 		naming.ReceiverNames,
 		naming.ConsistentReceivers,
 		naming.ExportedCommentFormat,
+		naming.ShadowBuiltins,
 		naming.InitialismCasing,
 		naming.SingleLetterExported,
 		naming.SingleLetterVariables,
