@@ -87,13 +87,6 @@ func countFuncLines(fn *ast.FuncDecl) int {
 	return max(1, countStmts(fn.Body.List)*2)
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func countStmts(stmts []ast.Stmt) int {
 	count := 0
 	for _, stmt := range stmts {

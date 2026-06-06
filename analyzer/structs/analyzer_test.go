@@ -12,3 +12,35 @@ func TestBooleanParameters(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), structs.BooleanParameters, "boolparam")
 }
+
+func TestExportedFieldsWithMethods(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.ExportedFieldsWithMethods, "exportedfields")
+}
+
+func TestGetenvOutsideMain(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.GetenvOutsideMain, "getenvoutsideimain")
+}
+
+func TestGlobalSlogFunctions(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.GlobalSlogFunctions, "globalslog")
+}
+
+func TestAnyInExportedAPI(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.AnyInExportedAPI, "anyinapi")
+}
+
+func TestFunctionTooLong(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.FunctionTooLong, "functiontoolong")
+}
+
+// TODO: Implement NoConstructorWithUnexportedFields analyzer
+// The implementation is currently a stub (just returns nil, nil)
+// func TestNoConstructorWithUnexportedFields(t *testing.T) {
+// 	t.Parallel()
+// 	analysistest.Run(t, analysistest.TestData(), structs.NoConstructorWithUnexportedFields, "noconstructorunexported")
+// }

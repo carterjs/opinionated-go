@@ -17,3 +17,23 @@ func TestExportedFuncAcceptsFunc(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), concurrency.ExportedFuncAcceptsFunc, "exportedfunc")
 }
+
+func TestErrGroupImport(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), concurrency.ErrGroupImport, "errgroup")
+}
+
+func TestContextNotFirstArg(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), concurrency.ContextNotFirstArg, "contextnotfirstarg")
+}
+
+func TestContextAsStructField(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), concurrency.ContextAsStructField, "contextasstructfield")
+}
+
+func TestContextWithNotAssigned(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), concurrency.ContextWithNotAssigned, "contextwithnotassigned")
+}
