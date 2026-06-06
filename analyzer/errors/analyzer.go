@@ -19,14 +19,6 @@ var (
 		Run:      runNakedErrorReturn,
 	}
 
-	// InlineErrorsNew errors on inline [errors.New] calls.
-	InlineErrorsNew = &analysis.Analyzer{
-		Name:     "inline_errors_new",
-		Doc:      "error on inline errors.New calls",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runInlineErrorsNew,
-	}
-
 	// StringErrorMatching errors on string matching against error messages.
 	StringErrorMatching = &analysis.Analyzer{
 		Name:     "string_error_matching",
@@ -79,27 +71,6 @@ func runNakedErrorReturn(pass *analysis.Pass) (interface{}, error) {
 		for _, result := range ret.Results {
 			if ident, ok := result.(*ast.Ident); ok && ident.Name == "err" {
 				pass.Reportf(ident.Pos(), "return error without wrapping: use fmt.Errorf with %%w")
-			}
-		}
-	})
-	return nil, nil
-}
-
-func runInlineErrorsNew(pass *analysis.Pass) (interface{}, error) {
-	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	inspect.Preorder([]ast.Node{(*ast.ReturnStmt)(nil), (*ast.AssignStmt)(nil)}, func(node ast.Node) {
-		switch n := node.(type) {
-		case *ast.ReturnStmt:
-			for _, result := range n.Results {
-				if isErrorsNewCall(result) {
-					pass.Reportf(result.Pos(), "errors.New should be assigned to a package-level var, not returned inline")
-				}
-			}
-		case *ast.AssignStmt:
-			for _, rhs := range n.Rhs {
-				if isErrorsNewCall(rhs) && n.Tok == token.ASSIGN {
-					pass.Reportf(rhs.Pos(), "errors.New should be assigned to a package-level var, not inline")
-				}
 			}
 		}
 	})

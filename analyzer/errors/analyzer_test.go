@@ -13,11 +13,6 @@ func TestNakedErrorReturn(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), errors.NakedErrorReturn, "nakederrorreturn")
 }
 
-func TestInlineErrorsNew(t *testing.T) {
-	t.Parallel()
-	analysistest.Run(t, analysistest.TestData(), errors.InlineErrorsNew, "inlineerrorsnew")
-}
-
 func TestStringErrorMatching(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), errors.StringErrorMatching, "stringerrormatching")

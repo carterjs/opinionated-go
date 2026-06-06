@@ -30,7 +30,6 @@ func main() {
 		comments.ExportedCommentFormat,
 
 		errors.NakedErrorReturn,
-		errors.InlineErrorsNew,
 		errors.StringErrorMatching,
 		errors.ErrorNotLast,
 		errors.NamedReturnValues,
