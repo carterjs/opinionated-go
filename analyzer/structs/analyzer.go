@@ -191,7 +191,13 @@ func isBoolType(expr ast.Expr) bool {
 
 func isAnyType(expr ast.Expr) bool {
 	if ident, ok := expr.(*ast.Ident); ok {
-		return ident.Name == "any" || ident.Name == "interface{}"
+		return ident.Name == "any"
+	}
+	// Check for interface{}
+	if iface, ok := expr.(*ast.InterfaceType); ok {
+		if iface.Methods == nil || len(iface.Methods.List) == 0 {
+			return true
+		}
 	}
 	return false
 }
