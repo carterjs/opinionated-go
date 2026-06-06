@@ -95,10 +95,6 @@ See `references/testing.md` for complete testing conventions.
 go run github.com/carterjs/opinionated-go/analyzer@latest ./...
 ```
 
-**Automatically fix violations** where possible:
-
-```bash
-go run github.com/carterjs/opinionated-go/analyzer@latest -fix ./...
-```
+The analyzer reports violations that require review and manual fixing. Most rules are architectural or structural and cannot be automatically corrected — they require understanding the code's purpose and intent.
 
 When working on code, apply these rules to every change, and use the analyzer to verify compliance. Refactoring, bug fixes, and new features should all follow this philosophy — there are no exceptions based on circumstance.
