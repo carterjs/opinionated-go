@@ -11,7 +11,7 @@ A single subject, stated consistently across every layer. These rules are prescr
 
 - **Full words only.** `Document` not `Doc`, `Request` not `Req`, `Response` not `Resp`, `Configuration` not `Cfg`, `Message` not `Msg`, `Error` not `Err` (as a name — `err` as a variable is correct).
 - **Initialisms always uppercase.** `ID`, `URL`, `HTTP`, `API`, `JSON` — never `Id`, `Url`, `Http`.
-- **Variable length scales with scope.** Single letters only in the tightest loops where meaning is unambiguous. Variables used across more than a few lines must be fully descriptive: `partitionKey` not `pk`, `errorCount` not `ec`.
+- **Variable length scales with scope.** Single letters only in the tightest loops where meaning is unambiguous. Variables used across more than a few lines must be fully descriptive: `partitionKey` not `pk`, `errorCount` not `ec`. Exceptions: idiomatic single-letter names like `w` for `http.ResponseWriter` and `r` for `*http.Request` are acceptable.
 - **`ctx` always `ctx`.** Any `context.Context` parameter is always named `ctx`. Never `c`, `context`, or anything else.
 - **`err` always `err`.** Any `error` variable is always named `err`. Never `e`, `erro`, or anything else.
 - **Receiver names.** A short, readable word derived from the type name — `store`, `mock`, `adapter`, `service`. Never a single letter. Never `s`, `m`, `a`. Consistent across all methods on the type.
