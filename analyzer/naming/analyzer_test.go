@@ -13,6 +13,11 @@ func TestReceiverNames(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), naming.ReceiverNames, "receiver")
 }
 
+func TestConsistentReceivers(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), naming.ConsistentReceivers, "consistentreceivers")
+}
+
 func TestInitialismCasing(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), naming.InitialismCasing, "initialism")

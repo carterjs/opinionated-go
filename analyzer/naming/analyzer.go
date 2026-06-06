@@ -19,6 +19,13 @@ var (
 		Run:      runReceiverNames,
 	}
 
+	ConsistentReceivers = &analysis.Analyzer{
+		Name:     "consistent_receivers",
+		Doc:      "error on inconsistent receiver names across methods on the same type",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runConsistentReceivers,
+	}
+
 	InitialismCasing = &analysis.Analyzer{
 		Name:     "initialism_casing",
 		Doc:      "error on initialisms in wrong case (Id, Url, Http, Api, Json, etc.)",
@@ -84,6 +91,45 @@ func runReceiverNames(pass *analysis.Pass) (interface{}, error) {
 			pass.Reportf(recv.Names[0].Pos(), "receiver name %q is too short; use a descriptive word", recvName)
 		}
 	})
+	return nil, nil
+}
+
+func runConsistentReceivers(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	// Map from receiver type name to (first receiver name, first method name)
+	firstReceiverName := make(map[string]string)
+	firstMethod := make(map[string]string)
+
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Recv == nil || len(fn.Recv.List) == 0 {
+			return
+		}
+
+		recv := fn.Recv.List[0]
+		recvName := recv.Names[0].Name
+		recvType := getTypeName(recv.Type)
+
+		if recvType == "" {
+			return
+		}
+
+		// First time seeing this type
+		if firstReceiverName[recvType] == "" {
+			firstReceiverName[recvType] = recvName
+			firstMethod[recvType] = fn.Name.Name
+			return
+		}
+
+		// Check if receiver name matches the first one seen
+		if recvName != firstReceiverName[recvType] {
+			pass.Reportf(recv.Names[0].Pos(),
+				"receiver name %q inconsistent with %s (which uses %q)",
+				recvName, firstMethod[recvType], firstReceiverName[recvType])
+		}
+	})
+
 	return nil, nil
 }
 

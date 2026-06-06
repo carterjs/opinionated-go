@@ -14,6 +14,7 @@ import (
 func main() {
 	multichecker.Main(
 		naming.ReceiverNames,
+		naming.ConsistentReceivers,
 		naming.InitialismCasing,
 		naming.SingleLetterExported,
 		naming.SingleLetterVariables,
