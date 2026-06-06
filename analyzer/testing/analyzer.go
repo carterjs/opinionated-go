@@ -46,6 +46,7 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runOrphanedTestFile,
 	}
+	// t.Context() requires Go 1.20+
 	ContextBackgroundInTest = &analysis.Analyzer{
 		Name:     "context_background_in_test",
 		Doc:      "error on context.Background in tests",
@@ -58,6 +59,7 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runFmtPrintInTest,
 	}
+	// t.Output() requires Go 1.21+
 	StdoutStderrInTest = &analysis.Analyzer{
 		Name:     "stdout_stderr_in_test",
 		Doc:      "warn on os.Stdout/Stderr in tests",
