@@ -129,6 +129,12 @@ func runTestNameInLoop(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
 	inspect.Preorder([]ast.Node{(*ast.RangeStmt)(nil), (*ast.ForStmt)(nil)}, func(node ast.Node) {
+		// Only check in test files
+		filename := pass.Fset.File(node.Pos()).Name()
+		if !strings.HasSuffix(filename, "_test.go") {
+			return
+		}
+
 		var loopVar string
 		var body *ast.BlockStmt
 
