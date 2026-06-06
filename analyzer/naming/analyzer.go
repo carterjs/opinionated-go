@@ -316,14 +316,24 @@ func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile 
 }
 
 func isIdiomatic(name, paramType string, isTestFile bool) bool {
-	if isTestFile && name == "t" && (paramType == "testing.T" || paramType == "*testing.T") {
-		return true
+	if isTestFile {
+		// Standard testing parameters
+		if name == "t" && (paramType == "testing.T" || paramType == "*testing.T") {
+			return true
+		}
+		if name == "b" && (paramType == "testing.B" || paramType == "*testing.B") {
+			return true
+		}
+		if name == "m" && (paramType == "testing.M" || paramType == "*testing.M") {
+			return true
+		}
+		if name == "f" && (paramType == "testing.F" || paramType == "*testing.F") {
+			return true
+		}
 	}
 	if name == "n" && paramType == "ast.Node" {
 		return true
 	}
-	// Single letters are idiomatic for math/utility functions and other short functions
-	// These are checked at the function level, so this is redundant but kept for clarity
 	return false
 }
 
