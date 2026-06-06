@@ -154,23 +154,25 @@ func runFunctionTooLong(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}, func(node ast.Node) {
 		var body *ast.BlockStmt
-		var startPos, endPos int
+		var startToken, endToken ast.Node
 		switch n := node.(type) {
 		case *ast.FuncDecl:
 			body = n.Body
-			startPos = int(n.Pos())
-			endPos = int(n.End())
+			startToken = n
+			endToken = n
 		case *ast.FuncLit:
 			body = n.Body
-			startPos = int(n.Pos())
-			endPos = int(n.End())
+			startToken = n
+			endToken = n
 		}
 		if body == nil {
 			return
 		}
-		lineCount := countLines(startPos, endPos)
+		startLine := pass.Fset.Position(startToken.Pos()).Line
+		endLine := pass.Fset.Position(endToken.End()).Line
+		lineCount := endLine - startLine + 1
 		if lineCount > 60 {
-			pass.Reportf(ast.Node(node).(ast.Node).Pos(), "function too long (%d lines); maximum 60 lines", lineCount)
+			pass.Reportf(startToken.Pos(), "function too long (%d lines); maximum 60 lines", lineCount)
 		}
 	})
 	return nil, nil
@@ -194,6 +196,3 @@ func isAnyType(expr ast.Expr) bool {
 	return false
 }
 
-func countLines(start, end int) int {
-	return end - start
-}
