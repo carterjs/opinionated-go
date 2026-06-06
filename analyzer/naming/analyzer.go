@@ -363,7 +363,8 @@ func runContextAndErrorNaming(pass *analysis.Pass) (interface{}, error) {
 
 func runPackageNaming(pass *analysis.Pass) (interface{}, error) {
 	pkgName := pass.Pkg.Name()
-	if strings.Contains(pkgName, "_") && len(pass.Files) > 0 {
+	// Allow _test suffix for test packages
+	if strings.Contains(pkgName, "_") && !strings.HasSuffix(pkgName, "_test") && len(pass.Files) > 0 {
 		pass.Reportf(pass.Files[0].Pos(), "package name %q contains underscore; use a single word", pkgName)
 	}
 	return nil, nil
