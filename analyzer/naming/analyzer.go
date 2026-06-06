@@ -232,17 +232,26 @@ func runSingleLetterVariables(pass *analysis.Pass) (interface{}, error) {
 	}
 
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	isTestFile := isTestFilePath(pass)
+	allowedContexts := trackForLoopVars(inspect)
 
-	// Check if this is a test file
-	isTestFile := false
-	if len(pass.Files) > 0 {
-		filename := pass.Fset.File(pass.Files[0].Pos()).Name()
-		isTestFile = strings.HasSuffix(filename, "_test.go")
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}, func(node ast.Node) {
+		checkFunctionVariables(pass, node, isTestFile, allowedContexts)
+	})
+
+	return nil, nil
+}
+
+func isTestFilePath(pass *analysis.Pass) bool {
+	if len(pass.Files) == 0 {
+		return false
 	}
+	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
+	return strings.HasSuffix(filename, "_test.go")
+}
 
-	// Track for loop variables and switch cases (allowed to be single letter)
+func trackForLoopVars(inspect *inspector.Inspector) map[string]bool {
 	allowedContexts := make(map[string]bool)
-
 	inspect.Preorder([]ast.Node{(*ast.ForStmt)(nil)}, func(node ast.Node) {
 		fs := node.(*ast.ForStmt)
 		if fs.Init != nil {
@@ -255,48 +264,50 @@ func runSingleLetterVariables(pass *analysis.Pass) (interface{}, error) {
 			}
 		}
 	})
+	return allowedContexts
+}
 
-	// Check function/method parameters and local variables
-	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}, func(node ast.Node) {
-		var params *ast.FieldList
-		var body *ast.BlockStmt
+func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool, allowedContexts map[string]bool) {
+	var params *ast.FieldList
+	var body *ast.BlockStmt
 
-		switch n := node.(type) {
-		case *ast.FuncDecl:
-			params = n.Type.Params
-			body = n.Body
-		case *ast.FuncLit:
-			params = n.Type.Params
-			body = n.Body
-		}
+	switch n := node.(type) {
+	case *ast.FuncDecl:
+		params = n.Type.Params
+		body = n.Body
+	case *ast.FuncLit:
+		params = n.Type.Params
+		body = n.Body
+	}
 
-		// Check parameters - allow idiomatic single-letter params
-		if params != nil {
-			for _, param := range params.List {
-				paramType := typeString(param.Type)
-				for _, name := range param.Names {
-					if len(name.Name) == 1 {
-						// Allow 't' for testing.T in test files
-						if isTestFile && name.Name == "t" && (paramType == "testing.T" || paramType == "*testing.T") {
-							continue
-						}
-						// Allow 'n' for ast.Node
-						if name.Name == "n" && paramType == "ast.Node" {
-							continue
-						}
-						pass.Reportf(name.Pos(), "parameter %q is too short; use a descriptive name", name.Name)
-					}
-				}
+	checkFunctionParams(pass, params, isTestFile)
+	if body != nil {
+		checkLocalVariables(pass, body, allowedContexts)
+	}
+}
+
+func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool) {
+	if params == nil {
+		return
+	}
+	for _, param := range params.List {
+		paramType := typeString(param.Type)
+		for _, name := range param.Names {
+			if len(name.Name) == 1 && !isIdiomatic(name.Name, paramType, isTestFile) {
+				pass.Reportf(name.Pos(), "parameter %q is too short; use a descriptive name", name.Name)
 			}
 		}
+	}
+}
 
-		// Check local variable declarations
-		if body != nil {
-			checkLocalVariables(pass, body, allowedContexts)
-		}
-	})
-
-	return nil, nil
+func isIdiomatic(name, paramType string, isTestFile bool) bool {
+	if isTestFile && name == "t" && (paramType == "testing.T" || paramType == "*testing.T") {
+		return true
+	}
+	if name == "n" && paramType == "ast.Node" {
+		return true
+	}
+	return false
 }
 
 func checkLocalVariables(pass *analysis.Pass, body *ast.BlockStmt, allowedContexts map[string]bool) {
