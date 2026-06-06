@@ -2,6 +2,7 @@ package pkgnames
 
 import (
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -28,6 +29,11 @@ func runUnusedInterface(pass *analysis.Pass) (interface{}, error) {
 }
 
 func runInitFunction(pass *analysis.Pass) (interface{}, error) {
+	// Skip generated files
+	if len(pass.Files) > 0 && isGenerated(pass.Files[0]) {
+		return nil, nil
+	}
+
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
 		fn := node.(*ast.FuncDecl)
@@ -36,4 +42,18 @@ func runInitFunction(pass *analysis.Pass) (interface{}, error) {
 		}
 	})
 	return nil, nil
+}
+
+func isGenerated(file *ast.File) bool {
+	if file.Comments == nil {
+		return false
+	}
+	for _, cg := range file.Comments {
+		for _, c := range cg.List {
+			if strings.Contains(c.Text, "Code generated") && strings.Contains(c.Text, "DO NOT EDIT") {
+				return true
+			}
+		}
+	}
+	return false
 }
