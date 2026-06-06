@@ -100,6 +100,14 @@ var (
 		Run:      runJavaStyleGetters,
 	}
 
+	// VerbosePrefixMethods warns on To<Type>() conversion methods.
+	VerbosePrefixMethods = &analysis.Analyzer{
+		Name:     "verbose_prefix_methods",
+		Doc:      "warn on To<Type>() conversion methods without parameters",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runVerbosePrefixMethods,
+	}
+
 	// StutteringNames warns on exported names that repeat their package name.
 	StutteringNames = &analysis.Analyzer{
 		Name:     "stuttering_names",
@@ -630,6 +638,45 @@ func isSimpleWord(word string) bool {
 
 // isSimpleGetter checks if a method looks like a simple getter.
 func isSimpleGetter(fn *ast.FuncDecl) bool {
+	// Should take no parameters (only receiver)
+	if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
+		return false
+	}
+	// Should return exactly 1 value (no error return)
+	if fn.Type.Results == nil || len(fn.Type.Results.List) != 1 {
+		return false
+	}
+	return true
+}
+
+func runVerbosePrefixMethods(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		// Only check exported methods (not bare functions)
+		if !isExported(fn.Name.Name) {
+			return
+		}
+		if fn.Recv == nil || len(fn.Recv.List) == 0 {
+			return
+		}
+
+		// Check if method name starts with "To" followed by uppercase
+		name := fn.Name.Name
+		if len(name) > 2 && name[:2] == "To" && unicode.IsUpper(rune(name[2])) {
+			// Only flag if it takes no parameters (except receiver) and returns one value
+			if isConversionMethod(fn) {
+				pass.Reportf(fn.Name.Pos(), "method %q uses verbose To prefix; consider a more idiomatic name", name)
+			}
+		}
+	})
+
+	return nil, nil
+}
+
+// isConversionMethod checks if a method looks like a simple conversion method.
+func isConversionMethod(fn *ast.FuncDecl) bool {
 	// Should take no parameters (only receiver)
 	if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
 		return false

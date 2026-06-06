@@ -25,6 +25,7 @@ func main() {
 		naming.FileNaming,
 		naming.GenericPackageNames,
 		naming.JavaStyleGetters,
+		naming.VerbosePrefixMethods,
 		naming.StutteringNames,
 
 		comments.ExportedCommentFormat,
