@@ -15,7 +15,8 @@ func main() {
 	multichecker.Main(
 		naming.ReceiverNames,
 		naming.InitialismCasing,
-		naming.CommonAbbreviations,
+		naming.SingleLetterExported,
+		naming.SingleLetterVariables,
 		naming.ContextAndErrorNaming,
 		naming.PackageNaming,
 		naming.FileNaming,

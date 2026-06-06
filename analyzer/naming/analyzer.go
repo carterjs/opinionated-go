@@ -26,11 +26,18 @@ var (
 		Run:      runInitialismCasing,
 	}
 
-	CommonAbbreviations = &analysis.Analyzer{
-		Name:     "common_abbreviations",
-		Doc:      "warn on common abbreviations (Doc, Req, Resp, Cfg, Ctx, etc.)",
+	SingleLetterExported = &analysis.Analyzer{
+		Name:     "single_letter_exported",
+		Doc:      "error on single-letter exported names at package scope",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runCommonAbbreviations,
+		Run:      runSingleLetterExported,
+	}
+
+	SingleLetterVariables = &analysis.Analyzer{
+		Name:     "single_letter_variables",
+		Doc:      "warn on single-letter local variables except in for loops or narrow scopes",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runSingleLetterVariables,
 	}
 
 	ContextAndErrorNaming = &analysis.Analyzer{
@@ -134,38 +141,137 @@ func runInitialismCasing(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func runCommonAbbreviations(pass *analysis.Pass) (interface{}, error) {
-	abbrevs := []string{"Doc", "Req", "Resp", "Cfg", "Ctx", "Msg", "Num", "Str", "Buf", "Ptr", "Pkg", "Src", "Dst", "Tmp", "Val", "Var", "Obj", "Mgr", "Svc", "Repo", "Impl"}
-
+func runSingleLetterExported(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	inspect.Preorder([]ast.Node{(*ast.Ident)(nil)}, func(node ast.Node) {
-		ident := node.(*ast.Ident)
-		if !isExported(ident.Name) {
-			return
-		}
 
-		for _, abbrev := range abbrevs {
-			if matchesAbbreviation(ident.Name, abbrev) {
-				pass.Reportf(ident.Pos(), "avoid abbreviation %q; use full word", abbrev)
-				return
+	// Check type declarations
+	inspect.Preorder([]ast.Node{(*ast.TypeSpec)(nil)}, func(node ast.Node) {
+		ts := node.(*ast.TypeSpec)
+		if len(ts.Name.Name) == 1 && isExported(ts.Name.Name) {
+			pass.Reportf(ts.Name.Pos(), "exported name %q is too short; use a descriptive word", ts.Name.Name)
+		}
+	})
+
+	// Check function declarations
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if len(fn.Name.Name) == 1 && isExported(fn.Name.Name) {
+			pass.Reportf(fn.Name.Pos(), "exported name %q is too short; use a descriptive word", fn.Name.Name)
+		}
+	})
+
+	// Check var/const declarations at package level
+	inspect.Preorder([]ast.Node{(*ast.GenDecl)(nil)}, func(node ast.Node) {
+		gd := node.(*ast.GenDecl)
+		if gd.Tok == token.VAR || gd.Tok == token.CONST {
+			for _, spec := range gd.Specs {
+				if vs, ok := spec.(*ast.ValueSpec); ok {
+					for _, name := range vs.Names {
+						if len(name.Name) == 1 && isExported(name.Name) {
+							pass.Reportf(name.Pos(), "exported name %q is too short; use a descriptive word", name.Name)
+						}
+					}
+				}
 			}
 		}
 	})
+
 	return nil, nil
 }
 
-func matchesAbbreviation(name, abbrev string) bool {
-	if name == abbrev {
+func runSingleLetterVariables(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	// Check if this is a test file
+	isTestFile := false
+	if len(pass.Files) > 0 {
+		filename := pass.Fset.File(pass.Files[0].Pos()).Name()
+		isTestFile = strings.HasSuffix(filename, "_test.go")
+	}
+
+	// Track for loop variables and switch cases (allowed to be single letter)
+	allowedContexts := make(map[string]bool)
+
+	inspect.Preorder([]ast.Node{(*ast.ForStmt)(nil)}, func(node ast.Node) {
+		fs := node.(*ast.ForStmt)
+		if fs.Init != nil {
+			if as, ok := fs.Init.(*ast.AssignStmt); ok {
+				for _, lhs := range as.Lhs {
+					if ident, ok := lhs.(*ast.Ident); ok && len(ident.Name) == 1 {
+						allowedContexts[ident.Name] = true
+					}
+				}
+			}
+		}
+	})
+
+	// Check function/method parameters and local variables
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}, func(node ast.Node) {
+		var params *ast.FieldList
+		var body *ast.BlockStmt
+
+		switch n := node.(type) {
+		case *ast.FuncDecl:
+			params = n.Type.Params
+			body = n.Body
+		case *ast.FuncLit:
+			params = n.Type.Params
+			body = n.Body
+		}
+
+		// Check parameters - allow idiomatic single-letter params
+		if params != nil {
+			for _, param := range params.List {
+				paramType := typeString(param.Type)
+				for _, name := range param.Names {
+					if len(name.Name) == 1 {
+						// Allow 't' for testing.T in test files
+						if isTestFile && name.Name == "t" && (paramType == "testing.T" || paramType == "*testing.T") {
+							continue
+						}
+						// Allow 'n' for ast.Node
+						if name.Name == "n" && paramType == "ast.Node" {
+							continue
+						}
+						pass.Reportf(name.Pos(), "parameter %q is too short; use a descriptive name", name.Name)
+					}
+				}
+			}
+		}
+
+		// Check local variable declarations
+		if body != nil {
+			checkLocalVariables(pass, body, allowedContexts)
+		}
+	})
+
+	return nil, nil
+}
+
+func checkLocalVariables(pass *analysis.Pass, body *ast.BlockStmt, allowedContexts map[string]bool) {
+	ast.Inspect(body, func(n ast.Node) bool {
+		switch stmt := n.(type) {
+		case *ast.AssignStmt:
+			if stmt.Tok == token.ASSIGN || stmt.Tok == token.DEFINE {
+				for i, lhs := range stmt.Lhs {
+					if ident, ok := lhs.(*ast.Ident); ok && len(ident.Name) == 1 && !allowedContexts[ident.Name] {
+						// Don't flag blank identifier
+						if ident.Name == "_" {
+							continue
+						}
+						// Don't flag type assertions (e.g., x := value.(type))
+						if i < len(stmt.Rhs) {
+							if _, ok := stmt.Rhs[i].(*ast.TypeAssertExpr); ok {
+								continue
+							}
+						}
+						pass.Reportf(ident.Pos(), "variable %q is too short; use a descriptive name", ident.Name)
+					}
+				}
+			}
+		}
 		return true
-	}
-	if strings.HasPrefix(name, abbrev) && len(name) > len(abbrev) && unicode.IsUpper(rune(name[len(abbrev)])) {
-		return true
-	}
-	if strings.HasSuffix(name, abbrev) && len(name) > len(abbrev) {
-		idx := len(name) - len(abbrev)
-		return unicode.IsUpper(rune(name[idx-1]))
-	}
-	return false
+	})
 }
 
 func runContextAndErrorNaming(pass *analysis.Pass) (interface{}, error) {
@@ -274,6 +380,8 @@ func typeString(expr ast.Expr) string {
 		if ident, ok := t.X.(*ast.Ident); ok {
 			return ident.Name + "." + t.Sel.Name
 		}
+	case *ast.StarExpr:
+		return "*" + typeString(t.X)
 	}
 	return ""
 }

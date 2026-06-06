@@ -5,7 +5,7 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 
-	"github.com/carterjs/opinionated-go/naming"
+	"github.com/carterjs/opinionated-go/analyzer/naming"
 )
 
 func TestReceiverNames(t *testing.T) {
@@ -18,9 +18,14 @@ func TestInitialismCasing(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), naming.InitialismCasing, "initialism")
 }
 
-func TestCommonAbbreviations(t *testing.T) {
+func TestSingleLetterExported(t *testing.T) {
 	t.Parallel()
-	analysistest.Run(t, analysistest.TestData(), naming.CommonAbbreviations, "abbrev")
+	analysistest.Run(t, analysistest.TestData(), naming.SingleLetterExported, "singleletterexported")
+}
+
+func TestSingleLetterVariables(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), naming.SingleLetterVariables, "singlelettervars")
 }
 
 func TestContextAndErrorNaming(t *testing.T) {
