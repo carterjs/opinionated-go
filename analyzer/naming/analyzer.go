@@ -226,6 +226,11 @@ func runSingleLetterExported(pass *analysis.Pass) (interface{}, error) {
 }
 
 func runSingleLetterVariables(pass *analysis.Pass) (interface{}, error) {
+	// Skip build cache and generated files
+	if shouldSkipPass(pass) {
+		return nil, nil
+	}
+
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
 	// Check if this is a test file
@@ -445,4 +450,13 @@ func isValidTestOrPlatformFile(filename string) bool {
 		}
 	}
 	return false
+}
+
+func shouldSkipPass(pass *analysis.Pass) bool {
+	if len(pass.Files) == 0 {
+		return false
+	}
+	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
+	// Skip build cache and generated files
+	return strings.Contains(filename, "/go-build/")
 }

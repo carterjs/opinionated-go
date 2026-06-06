@@ -29,9 +29,12 @@ func runUnusedInterface(pass *analysis.Pass) (interface{}, error) {
 }
 
 func runInitFunction(pass *analysis.Pass) (interface{}, error) {
-	// Skip generated files
-	if len(pass.Files) > 0 && isGenerated(pass.Files[0]) {
-		return nil, nil
+	// Skip generated/cached files
+	if len(pass.Files) > 0 {
+		filename := pass.Fset.File(pass.Files[0].Pos()).Name()
+		if strings.Contains(filename, "/go-build/") || isGenerated(pass.Files[0]) {
+			return nil, nil
+		}
 	}
 
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
