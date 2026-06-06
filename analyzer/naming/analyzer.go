@@ -81,6 +81,13 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runGenericPackageNames,
 	}
+
+	JavaStyleGetters = &analysis.Analyzer{
+		Name:     "java_style_getters",
+		Doc:      "error on Get<Field>() methods (use <Field>() instead)",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runJavaStyleGetters,
+	}
 )
 
 func runReceiverNames(pass *analysis.Pass) (interface{}, error) {
@@ -531,6 +538,30 @@ func shouldSkipPass(pass *analysis.Pass) bool {
 	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
 	// Skip build cache and generated files
 	return strings.Contains(filename, "/go-build/")
+}
+
+func runJavaStyleGetters(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		// Only check exported methods (not bare functions)
+		if !isExported(fn.Name.Name) {
+			return
+		}
+		if fn.Recv == nil || len(fn.Recv.List) == 0 {
+			return
+		}
+
+		// Check if method name starts with "Get" followed by uppercase
+		name := fn.Name.Name
+		if len(name) > 3 && name[:3] == "Get" && unicode.IsUpper(rune(name[3])) {
+			suggestedName := strings.ToLower(name[3:4]) + name[4:]
+			pass.Reportf(fn.Name.Pos(), "method %q should be named %q (Go idiom: method names should not use Get prefix)", name, suggestedName)
+		}
+	})
+
+	return nil, nil
 }
 
 func runShadowBuiltins(pass *analysis.Pass) (interface{}, error) {

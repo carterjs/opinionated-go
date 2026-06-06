@@ -52,3 +52,8 @@ func TestGenericPackageNames(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), naming.GenericPackageNames, "generic")
 }
+
+func TestJavaStyleGetters(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), naming.JavaStyleGetters, "javagetters")
+}

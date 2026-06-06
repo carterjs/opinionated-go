@@ -10,6 +10,7 @@ A single subject, stated consistently across every layer. These rules are prescr
 - **`ctx` always `ctx`.** Any `context.Context` parameter is always named `ctx`. Never `c`, `context`, or anything else.
 - **`err` always `err`.** Any `error` variable is always named `err`. Never `e`, `erro`, or anything else.
 - **Receiver names.** A short, readable word derived from the type name — `store`, `mock`, `adapter`, `service`. Never a single letter. Never `s`, `m`, `a`. Consistent across all methods on the type.
+- **Getter methods.** Use the Go idiom: `Name()` not `GetName()`. Setter methods are `SetField()`. Never `Get<Field>()` prefix.
 - **Package names.** Lowercase, single word, no underscores. Must match the directory name. Never `util`, `common`, `helpers`, `shared`, or similar generic names.
 - **File names.** No underscores except `_test.go` and `_<platform>_test.go` patterns. Name files after their primary concept (`store.go`, `schema.go`), never their role (`helpers.go`, `utils.go`).
 
