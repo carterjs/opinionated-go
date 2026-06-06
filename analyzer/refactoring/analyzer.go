@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	// InlineableFunction suggests inlining small unexported functions with few callers.
 	InlineableFunction = &analysis.Analyzer{
 		Name:     "inlineable_function",
 		Doc:      "suggest inlining small unexported functions with few callers",

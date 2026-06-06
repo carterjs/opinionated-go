@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	// NakedErrorReturn errors on naked [error] returns without wrapping.
 	NakedErrorReturn = &analysis.Analyzer{
 		Name:     "naked_error_return",
 		Doc:      "error on naked error returns without wrapping",
@@ -18,6 +19,7 @@ var (
 		Run:      runNakedErrorReturn,
 	}
 
+	// InlineErrorsNew errors on inline [errors.New] calls.
 	InlineErrorsNew = &analysis.Analyzer{
 		Name:     "inline_errors_new",
 		Doc:      "error on inline errors.New calls",
@@ -25,6 +27,7 @@ var (
 		Run:      runInlineErrorsNew,
 	}
 
+	// StringErrorMatching errors on string matching against error messages.
 	StringErrorMatching = &analysis.Analyzer{
 		Name:     "string_error_matching",
 		Doc:      "error on string matching error messages",
@@ -32,6 +35,7 @@ var (
 		Run:      runStringErrorMatching,
 	}
 
+	// ErrorNotLast errors when [error] is not the last return value.
 	ErrorNotLast = &analysis.Analyzer{
 		Name:     "error_not_last",
 		Doc:      "error when error is not last return value",
@@ -39,6 +43,7 @@ var (
 		Run:      runErrorNotLast,
 	}
 
+	// NamedReturnValues errors on named return values.
 	NamedReturnValues = &analysis.Analyzer{
 		Name:     "named_return_values",
 		Doc:      "error on named return values",
@@ -46,6 +51,7 @@ var (
 		Run:      runNamedReturnValues,
 	}
 
+	// PanicInNonMain errors on [builtin.panic] in non-main packages.
 	PanicInNonMain = &analysis.Analyzer{
 		Name:     "panic_in_non_main",
 		Doc:      "error on panic in non-main packages",
@@ -53,6 +59,7 @@ var (
 		Run:      runPanicInNonMain,
 	}
 
+	// SentinelNotAtPackageLevel errors on sentinel errors not declared at package level.
 	SentinelNotAtPackageLevel = &analysis.Analyzer{
 		Name:     "sentinel_not_at_package_level",
 		Doc:      "error on sentinel errors not at package level",

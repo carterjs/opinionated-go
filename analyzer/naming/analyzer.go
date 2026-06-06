@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	// ReceiverNames warns on receiver names that are too short for longer type names.
 	ReceiverNames = &analysis.Analyzer{
 		Name:     "receiver_names",
 		Doc:      "warn on receiver names that are 1-2 characters when type name is longer",
@@ -19,6 +20,7 @@ var (
 		Run:      runReceiverNames,
 	}
 
+	// ConsistentReceivers errors on inconsistent receiver names across methods on the same type.
 	ConsistentReceivers = &analysis.Analyzer{
 		Name:     "consistent_receivers",
 		Doc:      "error on inconsistent receiver names across methods on the same type",
@@ -26,6 +28,7 @@ var (
 		Run:      runConsistentReceivers,
 	}
 
+	// ShadowBuiltins errors on declaring functions that shadow Go built-ins.
 	ShadowBuiltins = &analysis.Analyzer{
 		Name:     "shadow_builtins",
 		Doc:      "error on declaring functions that shadow Go built-ins",
@@ -33,6 +36,7 @@ var (
 		Run:      runShadowBuiltins,
 	}
 
+	// InitialismCasing errors on initialisms with incorrect casing.
 	InitialismCasing = &analysis.Analyzer{
 		Name:     "initialism_casing",
 		Doc:      "error on initialisms in wrong case (Id, Url, Http, Api, Json, etc.)",
@@ -40,6 +44,7 @@ var (
 		Run:      runInitialismCasing,
 	}
 
+	// SingleLetterExported errors on single-letter exported names at package scope.
 	SingleLetterExported = &analysis.Analyzer{
 		Name:     "single_letter_exported",
 		Doc:      "error on single-letter exported names at package scope",
@@ -47,6 +52,7 @@ var (
 		Run:      runSingleLetterExported,
 	}
 
+	// SingleLetterVariables warns on single-letter local variables except in idiomatic contexts.
 	SingleLetterVariables = &analysis.Analyzer{
 		Name:     "single_letter_variables",
 		Doc:      "warn on single-letter local variables except in for loops or narrow scopes",
@@ -54,6 +60,7 @@ var (
 		Run:      runSingleLetterVariables,
 	}
 
+	// ContextAndErrorNaming errors when [context.Context] is not named ctx or [error] is not named err.
 	ContextAndErrorNaming = &analysis.Analyzer{
 		Name:     "context_error_naming",
 		Doc:      "error when context.Context not named ctx or error not named err",
@@ -61,6 +68,7 @@ var (
 		Run:      runContextAndErrorNaming,
 	}
 
+	// PackageNaming errors on package names with underscores or mismatched directory names.
 	PackageNaming = &analysis.Analyzer{
 		Name:     "package_naming",
 		Doc:      "error on package names with underscores or mismatched directory names",
@@ -68,6 +76,7 @@ var (
 		Run:      runPackageNaming,
 	}
 
+	// FileNaming warns on file names with underscores (except _test.go and platform variants).
 	FileNaming = &analysis.Analyzer{
 		Name:     "file_naming",
 		Doc:      "warn on file names with underscores (except _test.go and platform variants)",
@@ -75,6 +84,7 @@ var (
 		Run:      runFileNaming,
 	}
 
+	// GenericPackageNames errors on overly generic package names.
 	GenericPackageNames = &analysis.Analyzer{
 		Name:     "generic_package_names",
 		Doc:      "error on generic package names (util, common, helpers, shared, etc.)",
@@ -82,6 +92,7 @@ var (
 		Run:      runGenericPackageNames,
 	}
 
+	// JavaStyleGetters errors on Get<Field>() methods, preferring <Field>() instead.
 	JavaStyleGetters = &analysis.Analyzer{
 		Name:     "java_style_getters",
 		Doc:      "error on Get<Field>() methods (use <Field>() instead)",

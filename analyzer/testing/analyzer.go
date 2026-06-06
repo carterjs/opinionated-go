@@ -10,32 +10,35 @@ import (
 )
 
 var (
-	// t.Context() requires Go 1.20+
+	// ContextBackgroundInTest errors on [context.Background] in tests (requires Go 1.20+ for [testing.T.Context]).
 	ContextBackgroundInTest = &analysis.Analyzer{
 		Name:     "context_background_in_test",
 		Doc:      "error on context.Background in tests",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runContextBackgroundInTest,
 	}
+	// FmtPrintInTest errors on [fmt.Print] in tests.
 	FmtPrintInTest = &analysis.Analyzer{
 		Name:     "fmt_print_in_test",
 		Doc:      "error on fmt.Print in tests",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runFmtPrintInTest,
 	}
-	// t.Output() requires Go 1.21+
+	// StdoutStderrInTest warns on [os.Stdout]/[os.Stderr] in tests (requires Go 1.21+ for [testing.T.Output]).
 	StdoutStderrInTest = &analysis.Analyzer{
 		Name:     "stdout_stderr_in_test",
 		Doc:      "warn on os.Stdout/Stderr in tests",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runStdoutStderrInTest,
 	}
+	// NoSleepInTests errors on [time.Sleep] in tests.
 	NoSleepInTests = &analysis.Analyzer{
 		Name:     "no_sleep_in_tests",
 		Doc:      "error on time.Sleep in tests (use synctest or test utils instead)",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runNoSleepInTests,
 	}
+	// TestNameInLoop errors on using loop variable .name field in conditionals.
 	TestNameInLoop = &analysis.Analyzer{
 		Name:     "test_name_in_loop",
 		Doc:      "error on using loop variable .name field in conditionals",

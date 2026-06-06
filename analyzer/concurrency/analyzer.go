@@ -10,36 +10,42 @@ import (
 )
 
 var (
+	// ErrGroupImport errors on [golang.org/x/sync/errgroup] imports.
 	ErrGroupImport = &analysis.Analyzer{
 		Name:     "errgroup_import",
 		Doc:      "error on errgroup imports",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runErrGroupImport,
 	}
+	// ExportedFuncAcceptsChannel warns on exported functions accepting channels.
 	ExportedFuncAcceptsChannel = &analysis.Analyzer{
 		Name:     "exported_func_accepts_channel",
 		Doc:      "warn on exported functions accepting channels",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runExportedFuncAcceptsChannel,
 	}
+	// ExportedFuncAcceptsFunc warns on exported functions accepting func parameters.
 	ExportedFuncAcceptsFunc = &analysis.Analyzer{
 		Name:     "exported_func_accepts_func",
 		Doc:      "warn on exported functions accepting func parameters",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runExportedFuncAcceptsFunc,
 	}
+	// ContextNotFirstArg errors on [context.Context] parameter not being the first argument.
 	ContextNotFirstArg = &analysis.Analyzer{
 		Name:     "context_not_first_arg",
 		Doc:      "error on context parameter not being first argument",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runContextNotFirstArg,
 	}
+	// ContextAsStructField errors on [context.Context] as struct field.
 	ContextAsStructField = &analysis.Analyzer{
 		Name:     "context_as_struct_field",
 		Doc:      "error on context.Context as struct field",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runContextAsStructField,
 	}
+	// ContextWithNotAssigned errors on [context.With*] calls not assigning the return value.
 	ContextWithNotAssigned = &analysis.Analyzer{
 		Name:     "context_with_not_assigned",
 		Doc:      "error on context.With* calls not assigning return value",

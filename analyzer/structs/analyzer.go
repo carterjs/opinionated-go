@@ -9,42 +9,49 @@ import (
 )
 
 var (
+	// ExportedFieldsWithMethods errors on exported fields in structs with methods.
 	ExportedFieldsWithMethods = &analysis.Analyzer{
 		Name:     "exported_fields_with_methods",
 		Doc:      "error on exported fields in structs with methods",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runExportedFieldsWithMethods,
 	}
+	// BooleanParameters errors on [bool] parameters in exported functions.
 	BooleanParameters = &analysis.Analyzer{
 		Name:     "boolean_parameters",
 		Doc:      "error on boolean parameters in exported functions",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runBooleanParameters,
 	}
+	// NoConstructorWithUnexportedFields warns when a struct has unexported fields but no constructor.
 	NoConstructorWithUnexportedFields = &analysis.Analyzer{
 		Name:     "no_constructor_with_unexported_fields",
 		Doc:      "warn when struct has unexported fields but no constructor",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runNoConstructorWithUnexportedFields,
 	}
+	// GetenvOutsideMain errors on [os.Getenv] calls outside main.
 	GetenvOutsideMain = &analysis.Analyzer{
 		Name:     "getenv_outside_main",
 		Doc:      "error on os.Getenv outside main",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runGetenvOutsideMain,
 	}
+	// GlobalSlogFunctions errors on global [log/slog] function calls.
 	GlobalSlogFunctions = &analysis.Analyzer{
 		Name:     "global_slog_functions",
 		Doc:      "error on global slog function calls",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runGlobalSlogFunctions,
 	}
+	// AnyInExportedAPI warns on any/interface{} in exported APIs.
 	AnyInExportedAPI = &analysis.Analyzer{
 		Name:     "any_in_exported_api",
 		Doc:      "warn on any/interface{} in exported APIs",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runAnyInExportedAPI,
 	}
+	// FunctionTooLong warns on functions longer than 60 lines.
 	FunctionTooLong = &analysis.Analyzer{
 		Name:     "function_too_long",
 		Doc:      "warn on functions longer than 60 lines",

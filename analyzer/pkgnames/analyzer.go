@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// InitFunction warns on init functions.
 	InitFunction = &analysis.Analyzer{
 		Name:     "init_function",
 		Doc:      "warn on init functions",
