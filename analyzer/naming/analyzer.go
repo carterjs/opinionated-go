@@ -327,6 +327,15 @@ func isIdiomatic(name, paramType string, isTestFile bool) bool {
 	if name == "n" && paramType == "ast.Node" {
 		return true
 	}
+	// Common single-letter parameter names in comparison functions
+	commonParams := map[string]bool{
+		"a": true,
+		"b": true,
+		"c": true,
+	}
+	if commonParams[name] {
+		return true
+	}
 	return false
 }
 
