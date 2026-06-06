@@ -27,3 +27,8 @@ func TestNoSleepInTests(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), analysistesting.NoSleepInTests, "nosleep")
 }
+
+func TestTestNameInLoop(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), analysistesting.TestNameInLoop, "testnameloop")
+}

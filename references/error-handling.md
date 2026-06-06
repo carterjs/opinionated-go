@@ -2,7 +2,6 @@
 
 All errors must be wrapped with error chains, never returned naked. Sentinel errors live at package scope. Never match on error messages—use the type system.
 
----
 
 ## Always wrap with `%w`
 
@@ -20,7 +19,6 @@ if err := doSomething(); err != nil {
 }
 ```
 
----
 
 ## Sentinel errors at package level only
 
@@ -44,7 +42,6 @@ func Get(key string) (string, error) {
 }
 ```
 
----
 
 ## Typed error structs
 
@@ -69,7 +66,6 @@ if err := validate(req); err != nil {
 }
 ```
 
----
 
 ## Use `errors.Is` and `errors.As` only
 
@@ -92,7 +88,6 @@ if strings.Contains(err.Error(), "not found") {
 }
 ```
 
----
 
 ## Errors always last return value
 
@@ -106,7 +101,6 @@ func Process(ctx context.Context, req *Request) (string, error)
 func Process(ctx context.Context, req *Request) (error, string)
 ```
 
----
 
 ## Error strings: lowercase, no punctuation
 
@@ -120,7 +114,6 @@ return fmt.Errorf("reading config: %w", err)
 return fmt.Errorf("Reading config: %w.", err)
 ```
 
----
 
 ## Indent error flow
 
@@ -146,7 +139,6 @@ if err := validate(req); err == nil {
 }
 ```
 
----
 
 ## No `panic` in library code
 

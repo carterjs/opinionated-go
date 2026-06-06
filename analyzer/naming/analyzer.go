@@ -445,13 +445,16 @@ func runPackageNaming(pass *analysis.Pass) (interface{}, error) {
 }
 
 func runFileNaming(pass *analysis.Pass) (interface{}, error) {
+	if len(pass.Files) == 0 {
+		return nil, nil
+	}
 	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
 	base := strings.Split(filename, "/")
 	if len(base) > 0 {
 		filename = base[len(base)-1]
 	}
 
-	if strings.Contains(filename, "_") && !isValidTestOrPlatformFile(filename) && len(pass.Files) > 0 {
+	if strings.Contains(filename, "_") && !isValidTestOrPlatformFile(filename) {
 		pass.Reportf(pass.Files[0].Pos(), "file name %q should not contain underscores", filename)
 	}
 	return nil, nil

@@ -56,5 +56,6 @@ func main() {
 		testing.FmtPrintInTest,
 		testing.StdoutStderrInTest,
 		testing.NoSleepInTests,
+		testing.TestNameInLoop,
 	)
 }

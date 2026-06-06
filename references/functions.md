@@ -2,8 +2,6 @@
 
 Function and method design determines clarity and reusability. Methods belong with their types. Interfaces belong to consumers. Constructors own initialization logic.
 
----
-
 ## Maximum 4 parameters
 
 Functions with more than 4 parameters should use a config struct or functional options pattern.
@@ -21,7 +19,6 @@ func Process(ctx context.Context, req *Request, cfg Config) error
 func Process(ctx context.Context, req *Request, timeout time.Duration, retries int, debug bool) error
 ```
 
----
 
 ## `context.Context` always first
 
@@ -37,7 +34,6 @@ func (store *Store) Get(id string, ctx context.Context) (*User, error)
 func Fetch(url string, ctx context.Context) ([]byte, error)
 ```
 
----
 
 ## `*slog.Logger` always second
 
@@ -51,7 +47,6 @@ func Process(ctx context.Context, log *slog.Logger, req *Request) error
 func Process(ctx context.Context, req *Request, log *slog.Logger) error
 ```
 
----
 
 ## No boolean parameters
 
@@ -74,7 +69,6 @@ func Save(ctx context.Context, req *Request, opt SaveOption) error
 func Save(ctx context.Context, req *Request, draft bool) error
 ```
 
----
 
 ## No named return values
 
@@ -88,7 +82,6 @@ func Parse(data []byte) (*Config, error)
 func Parse(data []byte) (cfg *Config, err error)
 ```
 
----
 
 ## No `func` parameters
 
@@ -108,7 +101,6 @@ sort.Slice(items, func(i, j int) bool { return items[i] < items[j] })
 func Process(ctx context.Context, fn func(*Request) error) error
 ```
 
----
 
 ## Return concrete types
 
@@ -125,7 +117,6 @@ func NewStore() *MemoryStore { return &MemoryStore{} }
 func NewStore() Store { return &MemoryStore{} }
 ```
 
----
 
 ## Function length: 60 lines maximum
 
@@ -151,7 +142,6 @@ func HandleRequest(ctx context.Context, req *Request) error {
 }
 ```
 
----
 
 ## Methods on the type
 
@@ -171,7 +161,6 @@ type Store struct { }
 func (store *Store) Get(ctx context.Context, id string) (*User, error)
 ```
 
----
 
 ## Interfaces belong to the consumer
 
@@ -200,7 +189,6 @@ type Repository interface {
 }
 ```
 
----
 
 ## Never define an unused interface
 
@@ -225,7 +213,6 @@ type Writer interface {
 // Neither Reader nor Writer is used here
 ```
 
----
 
 ## Keep interfaces small
 
@@ -251,7 +238,6 @@ type ReadWriter interface {
 }
 ```
 
----
 
 ## No `any` in exported APIs
 
@@ -265,7 +251,6 @@ func Process(ctx context.Context, data *json.RawMessage) error
 func Process(ctx context.Context, data any) error
 ```
 
----
 
 ## No channels or sync.WaitGroup in exported signatures
 
@@ -283,7 +268,6 @@ func StartWorker(ctx context.Context, worker Worker) error
 func StartWorker(ctx context.Context, results chan string, wg *sync.WaitGroup)
 ```
 
----
 
 ## Constructors
 

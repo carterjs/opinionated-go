@@ -1,8 +1,6 @@
 # opinionated-go
 
-A single subject, stated consistently across every layer. These rules are prescriptive — follow them exactly. When in doubt, do not hedge: apply the rule.
-
----
+A single subject, stated consistently across every layer. These rules are prescriptive — apply them as written.
 
 ## Naming
 
@@ -15,27 +13,19 @@ A single subject, stated consistently across every layer. These rules are prescr
 - **Package names.** Lowercase, single word, no underscores. Must match the directory name. Never `util`, `common`, `helpers`, `shared`, or similar generic names.
 - **File names.** No underscores except `_test.go` and `_<platform>_test.go` patterns. Name files after their primary concept (`store.go`, `schema.go`), never their role (`helpers.go`, `utils.go`).
 
----
-
 ## Comments
 
 - All exported identifiers must have a godoc comment beginning with the identifier's name.
 - Unexported identifiers: comment only when the purpose is not clear from the name and context alone.
 - Inline comments: only when the *why* is non-obvious — a hidden constraint, subtle invariant, or known workaround.
 
----
-
 ## Error Handling
 
 See `references/error-handling.md` for detailed error handling patterns and examples.
 
----
-
 ## Functions, Methods & Design
 
 See `references/functions.md` for detailed guidance on function design, methods, interfaces, and constructors.
-
----
 
 ## Structs & Types
 
@@ -46,15 +36,11 @@ See `references/functions.md` for detailed guidance on function design, methods,
 - **Typed constants over raw string/int constants.** `type Status string` with typed constants beats `const StatusActive = "active"`.
 - **No magic numbers.** All numeric literals beyond 0 and 1 must be named constants.
 
----
-
 ## Concurrency
 
 - **Synchronous by default.** Never hide goroutines, channels, or async I/O inside library functions. Let the caller decide when to add concurrency.
 - **No fire-and-forget goroutines.** Every goroutine must have a clear owner and defined lifetime, managed with `sync.WaitGroup` or a done channel.
 - **`context.WithCancelCause` over `context.WithCancel`** when cancellation reason is meaningful to the caller.
-
----
 
 ## Global State & Configuration
 
@@ -63,8 +49,6 @@ See `references/functions.md` for detailed guidance on function design, methods,
 - **No `init()` functions.** Initialization logic belongs in constructors or `main`.
 - **No `errgroup`.** Use explicit goroutine creation, `sync.WaitGroup` for lifecycle management, and `context.WithCancelCause` when cancellation with a cause is appropriate.
 - **Dependency injection via constructor arguments or receiver fields.** Never closures capturing external state.
-
----
 
 ## Package & File Organization
 
@@ -80,8 +64,6 @@ See `references/functions.md` for detailed guidance on function design, methods,
 - **Delete dead code.** Never leave unused functions, variables, types, or imports.
 - **No `_test.go` file without a corresponding `.go` source file.**
 
----
-
 ## Layered Architecture
 
 See `references/architecture.md` for detailed patterns and examples.
@@ -93,8 +75,6 @@ Presentation  →  Service  →  Data
 - **Service layer** owns all business logic and all interface definitions. No I/O or persistence logic lives here.
 - **Data layer** contains database adapters, external API clients, file I/O, and other persistence concerns. Satisfies interfaces defined by the service layer. No business logic lives here.
 - **Presentation layer** composes service calls and formats output. Imports only service packages — never data-layer packages directly. No business logic lives here.
-
----
 
 ## Testing
 

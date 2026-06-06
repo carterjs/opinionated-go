@@ -1,8 +1,6 @@
 # Testing
 
-Tests are contracts. Readable enough to serve as documentation of intended behavior. No special treatment — the same conventions that apply to production code apply here.
-
------
+Tests are contracts that serve as documentation. Apply the same conventions as production code.
 
 ## Structure
 
@@ -12,8 +10,6 @@ Tests are contracts. Readable enough to serve as documentation of intended behav
 - **Always parallel.** Every test function calls `t.Parallel()` immediately. Every subtest calls `t.Parallel()` immediately inside `t.Run`.
 - **`t.Run` subtest names are human readable.** Spaces only — `"returns error when input is empty"` not `"returns_error_when_input_is_empty"` or `"returnsErrorWhenInputIsEmpty"`. No snake_case, no camelCase.
 
------
-
 ## Naming
 
 - **`Test<FunctionName>`** for functions: `TestParseDocument`.
@@ -22,15 +18,11 @@ Tests are contracts. Readable enough to serve as documentation of intended behav
 - No test function may cover unexported functionality directly — error. Test behavior through the public API.
 - **No `*_test.go` file without a corresponding `*.go` source file** — error. Exception: `export_test.go` is banned. Do not expose unexported identifiers to external test packages.
 
------
-
 ## File Organization
 
 - Test functions appear at the top of the file.
 - Mocks and helpers follow below, after all test functions.
 - Mock files live in their own file named `mock_<concept>.go` within the package, with symbols sorted alphabetically.
-
------
 
 ## Output & Context
 
@@ -39,15 +31,11 @@ Tests are contracts. Readable enough to serve as documentation of intended behav
 - **`t.Output()`** when a test requires an `io.Writer`. Never pass `os.Stdout` or `os.Stderr` to code under test.
 - **`t.Context()`** always. Never `context.Background()` or `context.TODO()` inside a test function.
 
------
-
 ## Assertions
 
 - Use `github.com/stretchr/testify/assert` and `require`.
 - `require` for preconditions and setup — failure stops the test immediately.
 - `assert` for the actual assertions — failure is recorded but the test continues.
-
------
 
 ## Mocks
 
@@ -73,15 +61,11 @@ func (mock *MockStore) Delete(ctx context.Context, key string) error {
 }
 ```
 
------
-
 ## Unit vs Integration
 
 - **Unit tests** isolate a single component by mocking its direct dependencies. The unit exercises only its own logic.
 - **Integration tests** verify behavior across multiple real layers. Mock one level deeper than the boundary under test.
 - Integration test files named `<concept>_integration_test.go` — the filename names the boundary being tested, not a single source file.
-
------
 
 ## General
 

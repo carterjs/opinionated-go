@@ -36,6 +36,12 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runNoSleepInTests,
 	}
+	TestNameInLoop = &analysis.Analyzer{
+		Name:     "test_name_in_loop",
+		Doc:      "error on using loop variable .name field in conditionals",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runTestNameInLoop,
+	}
 )
 
 func runContextBackgroundInTest(pass *analysis.Pass) (interface{}, error) {
@@ -114,4 +120,63 @@ func runNoSleepInTests(pass *analysis.Pass) (interface{}, error) {
 		}
 	})
 	return nil, nil
+}
+
+func runTestNameInLoop(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	inspect.Preorder([]ast.Node{(*ast.RangeStmt)(nil), (*ast.ForStmt)(nil)}, func(node ast.Node) {
+		var loopVar string
+		var body *ast.BlockStmt
+
+		switch n := node.(type) {
+		case *ast.RangeStmt:
+			// Get the loop variable (value part for range loops)
+			if ident, ok := n.Value.(*ast.Ident); ok {
+				loopVar = ident.Name
+			}
+			body = n.Body
+		case *ast.ForStmt:
+			// For standard for loops, we don't check (they're not table-driven tests typically)
+			return
+		}
+
+		if loopVar == "" || loopVar == "_" {
+			return
+		}
+
+		// Check loop body for conditionals using loopVar.name
+		ast.Inspect(body, func(n ast.Node) bool {
+			switch stmt := n.(type) {
+			case *ast.IfStmt:
+				if usesLoopVarName(stmt.Cond, loopVar) {
+					pass.Reportf(stmt.Pos(), "avoid checking %s.name in conditionals; restructure test data or use %s.skip", loopVar, loopVar)
+				}
+			case *ast.SwitchStmt:
+				if usesLoopVarName(stmt.Tag, loopVar) {
+					pass.Reportf(stmt.Pos(), "avoid switching on %s.name; restructure test data or use %s.skip", loopVar, loopVar)
+				}
+			}
+			return true
+		})
+	})
+
+	return nil, nil
+}
+
+func usesLoopVarName(expr ast.Expr, loopVar string) bool {
+	if expr == nil {
+		return false
+	}
+	found := false
+	ast.Inspect(expr, func(n ast.Node) bool {
+		if sel, ok := n.(*ast.SelectorExpr); ok {
+			if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == loopVar && sel.Sel.Name == "name" {
+				found = true
+				return false // Stop searching once found
+			}
+		}
+		return true
+	})
+	return found
 }
