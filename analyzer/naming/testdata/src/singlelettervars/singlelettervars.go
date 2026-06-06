@@ -8,7 +8,7 @@ func TestLoopVar() {
 	}
 }
 
-func TestParam(x int) { // want "parameter .* is too short"
+func TestParam(x int) { // OK: function is 3 lines (<=5), so single letter is allowed
 	fmt.Println(x)
 }
 
@@ -35,4 +35,29 @@ func TestGoodNames() {
 	for idx := 0; idx < 5; idx++ {
 		fmt.Println(idx)
 	}
+}
+
+// Small scope functions should allow single-letter params
+func TestSmallScopeClosure() {
+	data := []int{3, 1, 2}
+	// This closure is <= 5 lines, so i, j are OK
+	sort := func(i, j int) bool { return data[i] < data[j] } // OK: small scope
+	_ = sort
+}
+
+func TestSmallScopeFunction(x int) bool { // OK: function is <= 5 lines
+	return x > 0
+}
+
+func TestLargeScopeParam(x int) { // want "parameter .* is too short"
+	fmt.Println(x)
+	fmt.Println(x)
+	fmt.Println(x)
+	fmt.Println(x)
+	fmt.Println(x)
+	fmt.Println(x)
+}
+
+func TestUnderscoreParam(_ int) { // OK: underscore is allowed
+	fmt.Println("nothing")
 }
