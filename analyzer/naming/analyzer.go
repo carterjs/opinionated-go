@@ -385,6 +385,12 @@ func isIdiomatic(name, paramType string, isTestFile bool) bool {
 	if name == "n" && paramType == "ast.Node" {
 		return true
 	}
+	if name == "w" && (paramType == "http.ResponseWriter" || paramType == "ResponseWriter") {
+		return true
+	}
+	if name == "r" && (paramType == "*http.Request" || paramType == "*Request") {
+		return true
+	}
 	// Common single-letter parameter names in loops and comparison functions
 	commonParams := map[string]bool{
 		"i": true, // loop index
