@@ -10,13 +10,6 @@ import (
 )
 
 var (
-	// ErrGroupImport errors on [golang.org/x/sync/errgroup] imports.
-	ErrGroupImport = &analysis.Analyzer{
-		Name:     "errgroup_import",
-		Doc:      "error on errgroup imports",
-		Requires: []*analysis.Analyzer{inspect.Analyzer},
-		Run:      runErrGroupImport,
-	}
 	// ExportedFuncAcceptsChannel warns on exported functions accepting channels.
 	ExportedFuncAcceptsChannel = &analysis.Analyzer{
 		Name:     "exported_func_accepts_channel",
@@ -53,17 +46,6 @@ var (
 		Run:      runContextWithNotAssigned,
 	}
 )
-
-func runErrGroupImport(pass *analysis.Pass) (interface{}, error) {
-	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	inspect.Preorder([]ast.Node{(*ast.ImportSpec)(nil)}, func(node ast.Node) {
-		spec := node.(*ast.ImportSpec)
-		if spec.Path != nil && spec.Path.Value == `"golang.org/x/sync/errgroup"` {
-			pass.Reportf(spec.Pos(), "errgroup is banned; use explicit goroutines, sync.WaitGroup, and context.WithCancelCause")
-		}
-	})
-	return nil, nil
-}
 
 func runExportedFuncAcceptsChannel(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)

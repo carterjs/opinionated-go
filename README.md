@@ -62,7 +62,6 @@ See `.claude/hooks.json` in this repository for the Claude Code hook configurati
 opinionated-go deliberately disagrees with some common Go advice. Where it does, the reasoning is documented. The short version:
 
 - Named return values are banned, not just discouraged
-- `errgroup` is banned — prefer explicit goroutine ownership with `sync.WaitGroup` and `context.WithCancelCause`
 - Global `slog` functions are banned — inject `*slog.Logger`
 - Interfaces belong to the consumer package, not the producer
 - Boolean parameters are banned — they mean a function does two things

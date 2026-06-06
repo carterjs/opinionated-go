@@ -49,7 +49,7 @@ See `references/functions.md` for detailed guidance on function design, methods,
 - **`os.Getenv` only in `main`** or a `config` package loaded exclusively by `main`. Domain packages — stores, services, adapters — must never read environment variables directly.
 - **No global `slog` functions.** Never call `slog.Info`, `slog.Error`, `slog.Debug` etc. at the package level. Inject a `*slog.Logger` via constructor or parameter.
 - **No `init()` functions.** Initialization logic belongs in constructors or `main`.
-- **No `errgroup`.** Use explicit goroutine creation, `sync.WaitGroup` for lifecycle management, and `context.WithCancelCause` when cancellation with a cause is appropriate.
+- **Concurrency mechanisms are internal implementation.** Channels, `sync.WaitGroup`, `errgroup`, and other concurrency primitives belong in function implementations, never as function parameters or interface methods. Hide concurrency details from callers.
 - **Dependency injection via constructor arguments or receiver fields.** Never closures capturing external state.
 
 ## Package & File Organization

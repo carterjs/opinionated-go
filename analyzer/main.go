@@ -47,7 +47,6 @@ func main() {
 		structs.TooManyParameters,
 		structs.InterfaceTooLarge,
 
-		concurrency.ErrGroupImport,
 		concurrency.ExportedFuncAcceptsChannel,
 		concurrency.ExportedFuncAcceptsFunc,
 		concurrency.ContextNotFirstArg,
