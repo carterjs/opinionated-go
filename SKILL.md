@@ -89,14 +89,18 @@ See `references/testing.md` for complete testing conventions.
 
 ## Checking Your Code
 
-These conventions are enforced by the `opinionated-go` analyzer:
+These conventions are enforced by the `opinionated-go` analyzer, which is included in this skill. You can run it directly, or use the latest version from GitHub:
 
 ```bash
+# Using the analyzer from this skill
+go run ./analyzer ./...
+
+# Or using the latest version from GitHub
 go run github.com/carterjs/opinionated-go/analyzer@latest ./...
 ```
 
-To automatically fix violations where possible:
+To automatically fix violations where possible, add the `-fix` flag:
 
 ```bash
-go run github.com/carterjs/opinionated-go/analyzer@latest -fix ./...
+go run ./analyzer -fix ./...
 ```
