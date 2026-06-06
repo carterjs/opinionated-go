@@ -38,6 +38,16 @@ func TestFunctionTooLong(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), structs.FunctionTooLong, "functiontoolong")
 }
 
+func TestTooManyParameters(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.TooManyParameters, "toomanyparams")
+}
+
+func TestInterfaceTooLarge(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.InterfaceTooLarge, "interfacetoolarge")
+}
+
 // TODO: Implement NoConstructorWithUnexportedFields analyzer
 // The implementation is currently a stub (just returns nil, nil)
 // func TestNoConstructorWithUnexportedFields(t *testing.T) {

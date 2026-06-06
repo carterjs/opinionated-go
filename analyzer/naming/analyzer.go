@@ -99,6 +99,14 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runJavaStyleGetters,
 	}
+
+	// StutteringNames warns on exported names that repeat their package name.
+	StutteringNames = &analysis.Analyzer{
+		Name:     "stuttering_names",
+		Doc:      "warn on exported names that repeat their package name",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runStutteringNames,
+	}
 )
 
 func runReceiverNames(pass *analysis.Pass) (interface{}, error) {
@@ -602,6 +610,41 @@ func runShadowBuiltins(pass *analysis.Pass) (interface{}, error) {
 		fn := node.(*ast.FuncDecl)
 		if builtins[fn.Name.Name] {
 			pass.Reportf(fn.Name.Pos(), "function %q shadows Go built-in; use a different name", fn.Name.Name)
+		}
+	})
+
+	return nil, nil
+}
+
+func runStutteringNames(pass *analysis.Pass) (interface{}, error) {
+	pkgName := pass.Pkg.Name()
+
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.TypeSpec)(nil)}, func(node ast.Node) {
+		var name string
+		var pos token.Pos
+
+		switch n := node.(type) {
+		case *ast.FuncDecl:
+			// Only check exported package-level functions
+			if n.Recv != nil || !isExported(n.Name.Name) {
+				return
+			}
+			name = n.Name.Name
+			pos = n.Name.Pos()
+		case *ast.TypeSpec:
+			if !isExported(n.Name.Name) {
+				return
+			}
+			name = n.Name.Name
+			pos = n.Name.Pos()
+		default:
+			return
+		}
+
+		// Check if name starts with the package name (case-insensitive comparison)
+		if strings.HasPrefix(strings.ToLower(name), strings.ToLower(pkgName)) {
+			pass.Reportf(pos, "%q is a stuttering name; avoid repeating the package name %q", name, pkgName)
 		}
 	})
 

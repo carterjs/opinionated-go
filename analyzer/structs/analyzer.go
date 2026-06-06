@@ -58,6 +58,20 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runFunctionTooLong,
 	}
+	// TooManyParameters warns on functions with more than 4 parameters.
+	TooManyParameters = &analysis.Analyzer{
+		Name:     "too_many_parameters",
+		Doc:      "warn on functions with more than 4 parameters",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runTooManyParameters,
+	}
+	// InterfaceTooLarge warns on interfaces with more than 3 methods.
+	InterfaceTooLarge = &analysis.Analyzer{
+		Name:     "interface_too_large",
+		Doc:      "warn on interfaces with more than 3 methods",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runInterfaceTooLarge,
+	}
 )
 
 func runExportedFieldsWithMethods(pass *analysis.Pass) (interface{}, error) {
@@ -207,5 +221,38 @@ func isAnyType(expr ast.Expr) bool {
 		}
 	}
 	return false
+}
+
+func runTooManyParameters(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Type.Params == nil {
+			return
+		}
+
+		// Count parameters, excluding receiver for methods
+		params := fn.Type.Params.List
+		if len(params) > 4 {
+			pass.Reportf(fn.Pos(), "function has %d parameters; use config struct for more than 4", len(params))
+		}
+	})
+	return nil, nil
+}
+
+func runInterfaceTooLarge(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.InterfaceType)(nil)}, func(node ast.Node) {
+		iface := node.(*ast.InterfaceType)
+		if iface.Methods == nil {
+			return
+		}
+
+		methodCount := len(iface.Methods.List)
+		if methodCount > 3 {
+			pass.Reportf(iface.Pos(), "interface has %d methods; keep interfaces small (3 or fewer)", methodCount)
+		}
+	})
+	return nil, nil
 }
 

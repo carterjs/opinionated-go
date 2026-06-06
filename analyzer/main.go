@@ -25,6 +25,7 @@ func main() {
 		naming.FileNaming,
 		naming.GenericPackageNames,
 		naming.JavaStyleGetters,
+		naming.StutteringNames,
 
 		comments.ExportedCommentFormat,
 
@@ -43,6 +44,8 @@ func main() {
 		structs.GlobalSlogFunctions,
 		structs.AnyInExportedAPI,
 		structs.FunctionTooLong,
+		structs.TooManyParameters,
+		structs.InterfaceTooLarge,
 
 		concurrency.ErrGroupImport,
 		concurrency.ExportedFuncAcceptsChannel,
