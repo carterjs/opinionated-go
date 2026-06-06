@@ -602,12 +602,43 @@ func runJavaStyleGetters(pass *analysis.Pass) (interface{}, error) {
 		// Check if method name starts with "Get" followed by uppercase
 		name := fn.Name.Name
 		if len(name) > 3 && name[:3] == "Get" && unicode.IsUpper(rune(name[3])) {
-			suggestedName := strings.ToLower(name[3:4]) + name[4:]
-			pass.Reportf(fn.Name.Pos(), "method %q should be named %q (Go idiom: method names should not use Get prefix)", name, suggestedName)
+			// Only flag simple single-word getters (Get + one CamelCase word)
+			remainder := name[3:]
+			if isSimpleWord(remainder) && isSimpleGetter(fn) {
+				suggestedName := strings.ToLower(name[3:4]) + name[4:]
+				pass.Reportf(fn.Name.Pos(), "method %q should be named %q (Go idiom: method names should not use Get prefix)", name, suggestedName)
+			}
 		}
 	})
 
 	return nil, nil
+}
+
+// isSimpleWord checks if a string is a single CamelCase word (no lowercase before uppercase).
+func isSimpleWord(word string) bool {
+	if len(word) == 0 {
+		return false
+	}
+	// Check if there's another uppercase letter after the first one
+	for i := 1; i < len(word); i++ {
+		if unicode.IsUpper(rune(word[i])) {
+			return false // Multiple words
+		}
+	}
+	return true
+}
+
+// isSimpleGetter checks if a method looks like a simple getter.
+func isSimpleGetter(fn *ast.FuncDecl) bool {
+	// Should take no parameters (only receiver)
+	if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
+		return false
+	}
+	// Should return exactly 1 value (no error return)
+	if fn.Type.Results == nil || len(fn.Type.Results.List) != 1 {
+		return false
+	}
+	return true
 }
 
 func runShadowBuiltins(pass *analysis.Pass) (interface{}, error) {
