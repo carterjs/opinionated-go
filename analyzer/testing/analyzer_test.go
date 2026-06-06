@@ -22,3 +22,8 @@ func TestStdoutStderrInTest(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), analysistesting.StdoutStderrInTest, "stdout")
 }
+
+func TestNoSleepInTests(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), analysistesting.NoSleepInTests, "nosleep")
+}
