@@ -13,3 +13,8 @@ type Server struct{}
 func (s *Server) Start() {}
 
 func (s *Server) Stop() {}
+
+// Sealed-interface marker methods with unnamed receivers should not be flagged or crash.
+type DeletePatch struct{}
+
+func (DeletePatch) patch() {}

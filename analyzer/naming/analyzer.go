@@ -125,6 +125,9 @@ func runReceiverNames(pass *analysis.Pass) (interface{}, error) {
 			return
 		}
 		recv := fn.Recv.List[0]
+		if len(recv.Names) == 0 {
+			return
+		}
 		recvName := recv.Names[0].Name
 		recvType := getTypeName(recv.Type)
 
@@ -149,6 +152,9 @@ func runConsistentReceivers(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		recv := fn.Recv.List[0]
+		if len(recv.Names) == 0 {
+			return
+		}
 		recvName := recv.Names[0].Name
 		recvType := getTypeName(recv.Type)
 

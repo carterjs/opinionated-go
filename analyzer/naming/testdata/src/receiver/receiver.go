@@ -19,3 +19,8 @@ type S struct{}
 
 // Get on S is fine.
 func (s *S) Get() {}
+
+// Sealed-interface marker methods (unnamed receivers) should not be flagged or crash.
+type InsertPatch struct{}
+
+func (InsertPatch) patch() {}
