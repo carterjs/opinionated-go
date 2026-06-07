@@ -335,7 +335,7 @@ func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool,
 	checkFunctionParams(pass, params, isTestFile, body)
 
 	if body != nil {
-		checkLocalVariables(pass, body, allowedContexts)
+		checkLocalVariables(pass, body, allowedContexts, isTestFile)
 	}
 }
 
@@ -412,7 +412,10 @@ func isIdiomatic(name, paramType string, isTestFile bool) bool {
 	return false
 }
 
-func checkLocalVariables(pass *analysis.Pass, body *ast.BlockStmt, allowedContexts map[string]bool) {
+func checkLocalVariables(pass *analysis.Pass, body *ast.BlockStmt, allowedContexts map[string]bool, isTestFile bool) {
+	if isTestFile {
+		return
+	}
 	// Track single-letter variable declarations and their usage spans
 	varDecls := make(map[string]token.Pos)  // var name -> declaration position
 	varLastUse := make(map[string]token.Pos) // var name -> last usage position
