@@ -98,9 +98,8 @@ come from the shared `errcode` package — see `references/error-handling.md`.
 // package api (presentation)
 func writeError(w http.ResponseWriter, err error) {
   code := errcode.FromError(err)
-  writeJSON(w, statusForCode(code), errorResponse{
-    Error: errorDetail{Code: code, Message: code.Description()},
-  })
+  // Shape the body however you like — but the same way on every error.
+  writeJSON(w, statusForCode(code), newErrorBody(code))
 }
 ```
 
@@ -156,11 +155,8 @@ func statusForClass(class errcode.Class) int {
 }
 ```
 
-One error body shape, everywhere:
-
-```json
-{ "error": { "code": "task_not_found", "message": "the requested task does not exist" } }
-```
+The body format is not prescribed, but it must be consistent — pick one shape
+and return it on every error response, so clients parse errors a single way.
 
 
 ### OpenAPI is the spec
