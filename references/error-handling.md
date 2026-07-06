@@ -172,6 +172,17 @@ The rule holds when the downstream is another service's client: an adapter
 wrapping a `payment.Client` decides what `payment.ErrDeclined` means in its own
 domain, rather than passing it up unchanged.
 
+Distinguish a dependency's *failure* from its *answer*. When a downstream is
+unreachable, times out, or returns something unusable, translate it to an error
+that marks an upstream failure — not a generic internal error — so the API can
+report a 502 rather than a 500. A 500 means *we* are stuck; a 502 means a
+dependency is.
+
+A downstream 429 is a decision, not a reflex. Depending on the client, either
+retry with backoff and honor `Retry-After`, or translate it to a rate-limited
+error and let it surface as a 429 upstream. Retrying blindly can deepen the
+overload; propagating blindly wastes a legitimate retry. Choose per client.
+
 The presentation layer maps service errors to the transport. Turning
 `task.ErrNotFound` into a 404 belongs to the API layer alone — see the HTTP
 section in `references/architecture.md`. Neither the service nor the data layer
@@ -198,10 +209,12 @@ package errcode
 type Class string
 
 const (
-  ClassInvalid  Class = "invalid"
-  ClassNotFound Class = "not_found"
-  ClassConflict Class = "conflict"
-  ClassInternal Class = "internal"
+  ClassInvalid     Class = "invalid"
+  ClassNotFound    Class = "not_found"
+  ClassConflict    Class = "conflict"
+  ClassRateLimited Class = "rate_limited"
+  ClassUpstream    Class = "upstream" // a downstream dependency failed, not us
+  ClassInternal    Class = "internal"
 )
 
 type Code string

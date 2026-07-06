@@ -104,29 +104,54 @@ func writeError(w http.ResponseWriter, err error) {
 }
 ```
 
-**Map by class, override by code.** Most codes take their status from their
-class — every `invalid` is a 400, every `not_found` a 404. Switch on a specific
-code only when it needs a status its class would not give.
+**Map by class, override by code.** A class carries the common families — every
+`invalid` is a 400, every `not_found` a 404 — so codes that share a status share
+a class. A per-code case is right for a rare status that will only ever have one
+code: prefer it over inventing a single-member class. The anti-pattern is not
+per-code cases; it is relisting codes a class already covers.
 
 ```go
-// Do this - class is the default, a code is the rare exception
+// Do this - class for families, a code case for the rare one-off status
 func statusForCode(code errcode.Code) int {
   switch code {
-  case errcode.TaskLocked:
-    return http.StatusLocked // specific override
+  case errcode.UpstreamTimeout:
+    return http.StatusGatewayTimeout // one-off; not worth its own class
   default:
     return statusForClass(code.Class())
   }
 }
 
-// Not this - one case per code; the table grows without bound
+// Not this - relisting codes the class already covers
 func statusForCode(code errcode.Code) int {
   switch code {
   case errcode.TaskNotFound:
     return http.StatusNotFound
   case errcode.UserNotFound:
+    return http.StatusNotFound // ClassNotFound already gives 404
+  }
+}
+```
+
+**Separate our failures from our dependencies'.** A bug or an unexpected state
+on our side is a 500. A downstream dependency that is unreachable, times out, or
+answers unusably is a 502 — reporting it as our own error hides where the fault
+is. Give them different classes so the status is never guessed.
+
+```go
+func statusForClass(class errcode.Class) int {
+  switch class {
+  case errcode.ClassInvalid:
+    return http.StatusBadRequest
+  case errcode.ClassNotFound:
     return http.StatusNotFound
-  // ...every code restated
+  case errcode.ClassConflict:
+    return http.StatusConflict
+  case errcode.ClassRateLimited:
+    return http.StatusTooManyRequests
+  case errcode.ClassUpstream:
+    return http.StatusBadGateway // a dependency failed, not us
+  default:
+    return http.StatusInternalServerError // we are stuck
   }
 }
 ```
