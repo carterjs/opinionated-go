@@ -82,6 +82,9 @@ Presentation  →  Service  →  Data
 - **Service layer** owns all business logic and all interface definitions. No I/O or persistence logic lives here.
 - **Data layer** contains database adapters, external API clients, file I/O, and other persistence concerns. Satisfies interfaces defined by the service layer. No business logic lives here.
 - **Presentation layer** composes service calls and formats output. Imports only service packages — never data-layer packages directly. No business logic lives here.
+- **Dependency inversion.** The consuming layer owns the interface; the providing layer satisfies it. A generic client in the data layer is wrapped by a per-interface adapter (`sqlite.TaskAdapter` satisfies `task.Store`).
+- **Errors are translated at each boundary.** The service layer defines its domain errors. The data-layer adapter maps downstream errors into them — never propagate a downstream error blindly. The presentation layer maps service errors to the transport.
+- **HTTP uses the standard library.** Route with `net/http`; no third-party frameworks. Mapping service errors to status codes and bodies lives in the presentation layer only — never in the service or data layer.
 
 ## Testing
 

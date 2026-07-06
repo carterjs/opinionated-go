@@ -140,6 +140,44 @@ if err := validate(req); err == nil {
 ```
 
 
+## Translate errors at layer boundaries
+
+The service layer owns the domain errors. Sentinels and typed errors are defined
+there, next to the types they belong to.
+
+The data-layer adapter translates downstream errors into those service errors —
+that is its job. Never propagate a downstream error blindly; it leaks a detail
+the caller should not know.
+
+```go
+// Do this - adapter maps the downstream error to a service error
+func (adapter *TaskAdapter) Get(ctx context.Context, id string) (*task.Task, error) {
+  t, err := adapter.client.query(ctx, id)
+  if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+      return nil, task.ErrNotFound
+    }
+    return nil, fmt.Errorf("getting task: %w", err)
+  }
+  return t, nil
+}
+
+// Not this - the downstream error type leaks upward
+func (adapter *TaskAdapter) Get(ctx context.Context, id string) (*task.Task, error) {
+  return adapter.client.query(ctx, id) // sql.ErrNoRows leaks into the service
+}
+```
+
+The rule holds when the downstream is another service's client: an adapter
+wrapping a `payment.Client` decides what `payment.ErrDeclined` means in its own
+domain, rather than passing it up unchanged.
+
+The presentation layer maps service errors to the transport. Turning
+`task.ErrNotFound` into a 404 belongs to the API layer alone — see the HTTP
+section in `references/architecture.md`. Neither the service nor the data layer
+knows about status codes.
+
+
 ## No `panic` in library code
 
 Library code must return errors. `panic` is only acceptable in `main` or test setup helpers.
