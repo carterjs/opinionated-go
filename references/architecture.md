@@ -89,28 +89,70 @@ See `references/error-handling.md` for how errors cross these boundaries.
 The standard library wins. Route with `net/http` (`http.ServeMux` and method
 patterns since Go 1.22); do not reach for a third-party router or framework.
 
-Mapping service errors to status codes and response bodies belongs here and
-nowhere else. Handlers inspect service errors with `errors.Is` / `errors.As` and
-choose the status. The service and data layers never see a status code.
+Mapping errors to the transport lives here and nowhere else. A handler turns a
+service error into a code, the code into a status, and writes one consistent
+body. The service and data layers never see a status code. Codes and classes
+come from the shared `errcode` package — see `references/error-handling.md`.
 
 ```go
-// package api (presentation) — the mapping lives here
-func (handler *Handler) getTask(w http.ResponseWriter, r *http.Request) {
-  t, err := handler.tasks.Get(r.Context(), r.PathValue("id"))
-  if err != nil {
-    switch {
-    case errors.Is(err, task.ErrNotFound):
-      http.Error(w, "not found", http.StatusNotFound)
-    default:
-      http.Error(w, "internal error", http.StatusInternalServerError)
-    }
-    return
-  }
-  writeJSON(w, http.StatusOK, t)
+// package api (presentation)
+func writeError(w http.ResponseWriter, err error) {
+  code := errcode.FromError(err)
+  writeJSON(w, statusForCode(code), errorResponse{
+    Error: errorDetail{Code: code, Message: code.Description()},
+  })
 }
 ```
 
-When there are many errors to map, a shared transport-neutral package may define
-error codes or classes that service errors carry, and the handler maps class →
-status. The class stays free of HTTP; the status and body mapping stays in the
-API layer.
+**Map by class, override by code.** Most codes take their status from their
+class — every `invalid` is a 400, every `not_found` a 404. Switch on a specific
+code only when it needs a status its class would not give.
+
+```go
+// Do this - class is the default, a code is the rare exception
+func statusForCode(code errcode.Code) int {
+  switch code {
+  case errcode.TaskLocked:
+    return http.StatusLocked // specific override
+  default:
+    return statusForClass(code.Class())
+  }
+}
+
+// Not this - one case per code; the table grows without bound
+func statusForCode(code errcode.Code) int {
+  switch code {
+  case errcode.TaskNotFound:
+    return http.StatusNotFound
+  case errcode.UserNotFound:
+    return http.StatusNotFound
+  // ...every code restated
+  }
+}
+```
+
+One error body shape, everywhere:
+
+```json
+{ "error": { "code": "task_not_found", "message": "the requested task does not exist" } }
+```
+
+
+### OpenAPI is the spec
+
+Describe the API with OpenAPI. Because every code carries a class and a
+description, the spec follows from the codes: each endpoint enumerates, per
+status, the codes it can return, and the description is the code's own.
+
+- **Enumerate.** List the codes an endpoint actually returns under each status —
+  a 404 lists its one or two not-found codes; a 400 lists its validation codes.
+- **Override or extend per endpoint** when it has codes the shared set lacks.
+- A blanket 500 is documented once as a global fallback, not repeated per
+  endpoint. Never document "may return any error."
+
+```go
+// codes GET /tasks/{id} can return, grouped into the OpenAPI responses by status
+var getTaskErrors = []errcode.Code{
+  errcode.TaskNotFound, // 404
+}
+```

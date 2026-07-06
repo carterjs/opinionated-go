@@ -85,6 +85,8 @@ Presentation  →  Service  →  Data
 - **Dependency inversion.** The consuming layer owns the interface; the providing layer satisfies it. A generic client in the data layer is wrapped by a per-interface adapter (`sqlite.TaskAdapter` satisfies `task.Store`).
 - **Errors are translated at each boundary.** The service layer defines its domain errors. The data-layer adapter maps downstream errors into them — never propagate a downstream error blindly. The presentation layer maps service errors to the transport.
 - **HTTP uses the standard library.** Route with `net/http`; no third-party frameworks. Mapping service errors to status codes and bodies lives in the presentation layer only — never in the service or data layer.
+- **Error codes are a shared, transport-neutral vocabulary.** An `errcode` package names service errors as coded values, each with a `Class` and a description, and owns the error → code mapping. It imports the service packages, never the reverse, and knows nothing about HTTP.
+- **The API is specified with OpenAPI.** Each endpoint enumerates the error codes it can return per status; descriptions come from the codes. Map status by class, override by specific code.
 
 ## Testing
 
