@@ -6,7 +6,6 @@ import (
 	"github.com/carterjs/opinionated-go/analyzer/comments"
 	"github.com/carterjs/opinionated-go/analyzer/concurrency"
 	"github.com/carterjs/opinionated-go/analyzer/errors"
-	"github.com/carterjs/opinionated-go/analyzer/http"
 	"github.com/carterjs/opinionated-go/analyzer/naming"
 	"github.com/carterjs/opinionated-go/analyzer/pkgnames"
 	"github.com/carterjs/opinionated-go/analyzer/structs"
@@ -55,8 +54,6 @@ func main() {
 		concurrency.ContextWithNotAssigned,
 
 		pkgnames.InitFunction,
-
-		http.NoHTTPFramework,
 
 		testing.ContextBackgroundInTest,
 		testing.FmtPrintInTest,
