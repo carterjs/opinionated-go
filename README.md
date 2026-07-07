@@ -69,6 +69,7 @@ opinionated-go deliberately disagrees with some common Go advice. Where it does,
 - Global `slog` functions are banned — inject `*slog.Logger`
 - Interfaces belong to the consumer package, not the producer
 - Boolean parameters are banned — they mean a function does two things
+- Third-party HTTP frameworks are banned — `net/http` is the router
 
 ## License
 

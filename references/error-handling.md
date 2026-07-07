@@ -140,6 +140,116 @@ if err := validate(req); err == nil {
 ```
 
 
+## Translate errors at layer boundaries
+
+The service layer owns the domain errors. Sentinels and typed errors are defined
+there, next to the types they belong to.
+
+The data-layer adapter translates downstream errors into those service errors —
+that is its job. Never propagate a downstream error blindly; it leaks a detail
+the caller should not know.
+
+```go
+// Do this - adapter maps the downstream error to a service error
+func (adapter *TaskAdapter) Get(ctx context.Context, id string) (*task.Task, error) {
+  t, err := adapter.client.query(ctx, id)
+  if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+      return nil, task.ErrNotFound
+    }
+    return nil, fmt.Errorf("getting task: %w", err)
+  }
+  return t, nil
+}
+
+// Not this - the downstream error type leaks upward
+func (adapter *TaskAdapter) Get(ctx context.Context, id string) (*task.Task, error) {
+  return adapter.client.query(ctx, id) // sql.ErrNoRows leaks into the service
+}
+```
+
+The rule holds when the downstream is another service's client: an adapter
+wrapping a `payment.Client` decides what `payment.ErrDeclined` means in its own
+domain, rather than passing it up unchanged.
+
+Distinguish a dependency's *failure* from its *answer*. When a downstream is
+unreachable, times out, or returns something unusable, translate it to an error
+that marks an upstream failure — not a generic internal error — so the API can
+report a 502 rather than a 500. A 500 means *we* are stuck; a 502 means a
+dependency is.
+
+A downstream 429 is a decision, not a reflex. Depending on the client, either
+retry with backoff and honor `Retry-After`, or translate it to a rate-limited
+error and let it surface as a 429 upstream. Retrying blindly can deepen the
+overload; propagating blindly wastes a legitimate retry. Choose per client.
+
+The presentation layer maps service errors to the transport. Turning
+`task.ErrNotFound` into a 404 belongs to the API layer alone — see the HTTP
+section in `references/architecture.md`. Neither the service nor the data layer
+knows about status codes.
+
+
+## Error codes: one shared vocabulary
+
+When many errors must reach a transport, a single `errcode` package gives them
+stable, serializable names. It owns two types and the mapping — and nothing
+about any transport.
+
+- **`Class`** is a coarse, transport-neutral category (`invalid`, `not_found`,
+  `conflict`, …). Many codes share one class.
+- **`Code`** is a stable string identifier for one condition, carrying its class
+  and a description. Codes are values, not bare enum constants, so each one can
+  describe itself.
+- **`FromError`** is the single place that knows every service's errors. It maps
+  sentinels and typed errors to codes with `errors.Is` / `errors.As`.
+
+```go
+package errcode
+
+type Class string
+
+const (
+  ClassInvalid     Class = "invalid"
+  ClassNotFound    Class = "not_found"
+  ClassConflict    Class = "conflict"
+  ClassRateLimited Class = "rate_limited"
+  ClassUpstream    Class = "upstream" // a downstream dependency failed, not us
+  ClassInternal    Class = "internal"
+)
+
+type Code string
+
+// Each code carries a class and a description.
+var (
+  Unknown      = define("unknown", ClassInternal, "an unexpected error occurred")
+  TaskNotFound = define("task_not_found", ClassNotFound, "the requested task does not exist")
+  TaskExists   = define("task_exists", ClassConflict, "a task already exists with that identifier")
+)
+
+func FromError(err error) Code {
+  switch {
+  case errors.Is(err, task.ErrNotFound):
+    return TaskNotFound
+  case errors.Is(err, task.ErrExists):
+    return TaskExists
+  }
+  return Unknown
+}
+```
+
+Service packages still own their errors — `task.ErrNotFound` lives in `task`.
+`errcode` only names and classifies them, so it imports the services, never the
+reverse. Keep it transport-neutral: no status codes, no response shapes. A class
+is a category, not an HTTP status.
+
+```go
+// Not this - HTTP has leaked into the shared vocabulary
+func (code Code) HTTPStatus() int { // status mapping belongs to the API layer
+  return 404
+}
+```
+
+
 ## No `panic` in library code
 
 Library code must return errors. `panic` is only acceptable in `main` or test setup helpers.
