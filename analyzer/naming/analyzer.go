@@ -203,19 +203,11 @@ func runInitialismCasing(pass *analysis.Pass) (interface{}, error) {
 			if n.Tok == token.TYPE || n.Tok == token.CONST || n.Tok == token.VAR {
 				for _, spec := range n.Specs {
 					if ts, ok := spec.(*ast.TypeSpec); ok && isExported(ts.Name.Name) {
-						for wrong, correct := range wrongInitialisms {
-							if strings.Contains(ts.Name.Name, wrong) {
-								pass.Reportf(ts.Pos(), "initialism %q should be %q", wrong, correct)
-							}
-						}
+						reportBadInitialisms(pass, ts.Name.Name, ts.Pos(), wrongInitialisms)
 					} else if vs, ok := spec.(*ast.ValueSpec); ok {
 						for _, name := range vs.Names {
 							if isExported(name.Name) {
-								for wrong, correct := range wrongInitialisms {
-									if strings.Contains(name.Name, wrong) {
-										pass.Reportf(name.Pos(), "initialism %q should be %q", wrong, correct)
-									}
-								}
+								reportBadInitialisms(pass, name.Name, name.Pos(), wrongInitialisms)
 							}
 						}
 					}
@@ -223,15 +215,50 @@ func runInitialismCasing(pass *analysis.Pass) (interface{}, error) {
 			}
 		case *ast.FuncDecl:
 			if isExported(n.Name.Name) {
-				for wrong, correct := range wrongInitialisms {
-					if strings.Contains(n.Name.Name, wrong) {
-						pass.Reportf(n.Pos(), "initialism %q should be %q", wrong, correct)
-					}
-				}
+				reportBadInitialisms(pass, n.Name.Name, n.Pos(), wrongInitialisms)
 			}
 		}
 	})
 	return nil, nil
+}
+
+// reportBadInitialisms flags any camelCase word in name that is a miscased
+// initialism. Matching whole words avoids false positives on full words that
+// merely begin with an initialism's letters, such as "Identifier" for "Id".
+func reportBadInitialisms(pass *analysis.Pass, name string, pos token.Pos, wrongInitialisms map[string]string) {
+	for _, word := range camelWords(name) {
+		if correct, ok := wrongInitialisms[word]; ok {
+			pass.Reportf(pos, "initialism %q should be %q", word, correct)
+		}
+	}
+}
+
+// camelWords splits a camelCase or PascalCase identifier into its component
+// words. A word boundary starts at a lower-to-upper transition ("userId" ->
+// "user", "Id") and where an acronym run ends before a new word
+// ("HTTPServer" -> "HTTP", "Server"). Digits stay attached to the current word.
+func camelWords(name string) []string {
+	runes := []rune(name)
+	var words []string
+	start := 0
+	for i := 1; i < len(runes); i++ {
+		prev, curr := runes[i-1], runes[i]
+		boundary := false
+		switch {
+		case unicode.IsLower(prev) && unicode.IsUpper(curr):
+			// lower -> Upper: end of a word, start of the next.
+			boundary = true
+		case unicode.IsUpper(prev) && unicode.IsUpper(curr) && i+1 < len(runes) && unicode.IsLower(runes[i+1]):
+			// Acronym run ending: "HTTPServer" splits before "Server".
+			boundary = true
+		}
+		if boundary {
+			words = append(words, string(runes[start:i]))
+			start = i
+		}
+	}
+	words = append(words, string(runes[start:]))
+	return words
 }
 
 func runSingleLetterExported(pass *analysis.Pass) (interface{}, error) {
