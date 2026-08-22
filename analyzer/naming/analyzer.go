@@ -117,8 +117,24 @@ var (
 	}
 )
 
+// runReceiverNames reports a type whose methods introduce it by an initial.
+// The finding belongs to the type, not to each method that repeats the choice,
+// so it is reported once against the declaration however many methods share it.
+// [ConsistentReceivers] separately covers methods that disagree with each other.
 func runReceiverNames(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+
+	declarations := make(map[string]token.Pos)
+	inspect.Preorder([]ast.Node{(*ast.TypeSpec)(nil)}, func(node ast.Node) {
+		spec := node.(*ast.TypeSpec)
+		declarations[spec.Name.Name] = spec.Name.Pos()
+	})
+
+	shortNames := make(map[string]string)
+	methodCounts := make(map[string]int)
+	firstUse := make(map[string]token.Pos)
+	var order []string
+
 	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
 		fn := node.(*ast.FuncDecl)
 		if fn.Recv == nil || len(fn.Recv.List) == 0 {
@@ -130,12 +146,35 @@ func runReceiverNames(pass *analysis.Pass) (interface{}, error) {
 		}
 		recvName := recv.Names[0].Name
 		recvType := getTypeName(recv.Type)
-
-		if len(recvName) <= 2 && len(recvType) > 2 {
-			pass.Reportf(recv.Names[0].Pos(), "receiver name %q is too short; use a descriptive word", recvName)
+		if recvType == "" || len(recvName) > 2 || len(recvType) <= 2 {
+			return
 		}
+
+		if _, seen := shortNames[recvType]; !seen {
+			shortNames[recvType] = recvName
+			firstUse[recvType] = recv.Names[0].Pos()
+			order = append(order, recvType)
+		}
+		methodCounts[recvType]++
 	})
+
+	for _, recvType := range order {
+		pos, ok := declarations[recvType]
+		if !ok {
+			pos = firstUse[recvType]
+		}
+		pass.Reportf(pos, "receiver name %q is too short for %s (%d %s); use a descriptive word",
+			shortNames[recvType], recvType, methodCounts[recvType], plural(methodCounts[recvType], "method", "methods"))
+	}
+
 	return nil, nil
+}
+
+func plural(count int, singular, many string) string {
+	if count == 1 {
+		return singular
+	}
+	return many
 }
 
 func runConsistentReceivers(pass *analysis.Pass) (interface{}, error) {

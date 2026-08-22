@@ -1,12 +1,18 @@
 package receiver
 
 // Store is a data store.
-type Store struct{}
+type Store struct{} // want "receiver name .s. is too short for Store \\(3 methods\\)"
 
 // Get retrieves a value.
-func (s *Store) Get() string { // want "receiver name .* is too short"
+func (s *Store) Get() string {
 	return ""
 }
+
+// Put stores a value.
+func (s *Store) Put(value string) {}
+
+// Delete removes a value.
+func (s *Store) Delete() {}
 
 // Service is a business logic service.
 type Service struct{}

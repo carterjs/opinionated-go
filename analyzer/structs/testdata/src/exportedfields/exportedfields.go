@@ -1,41 +1,51 @@
 package exportedfields
 
-// Bad: Exported field
-type Config struct {
-	Name string // want "struct with methods should not have exported fields"
+// Bad: one exported field, reported once against the type
+type Config struct { // want "struct .Config. has methods and should not have exported fields \\(Name\\)"
+	Name string
 	port int
 }
 
-func (c *Config) GetPort() int {
-	return c.port
+func (config *Config) Port() int {
+	return config.port
 }
 
-// Good: No exported fields
+// Good: no exported fields
 type GoodConfig struct {
 	name string
 	port int
 }
 
-func (c *GoodConfig) Name() string {
-	return c.name
+func (config *GoodConfig) Name() string {
+	return config.name
 }
 
-// Bad: Exported field (even without methods)
+// Good: a plain record with no methods is exported fields and nothing else
 type SimpleData struct {
-	Value int // want "struct with methods should not have exported fields"
+	Value int
 	name  string
 }
 
-// Bad: Multiple exported fields
-type MultiField struct {
-	ID   int    // want "struct with methods should not have exported fields"
-	Name string // want "struct with methods should not have exported fields"
-	value bool
+// Bad: three exported fields, still one finding for the struct
+type MultiField struct { // want "struct .MultiField. has methods and should not have exported fields \\(ID, Name, Size\\)"
+	ID         int
+	Name, Size string
+	value      bool
 }
 
-// Good: All unexported fields
+// Label gives MultiField behaviour.
+func (field *MultiField) Label() string {
+	return field.Name
+}
+
+// Good: all unexported fields
 type PrivateData struct {
 	id    int
 	name  string
 	value bool
 }
+
+// Good: an anonymous struct has no methods to route access through
+var anonymous = struct {
+	Field string
+}{Field: "value"}

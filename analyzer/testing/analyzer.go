@@ -2,6 +2,7 @@ package testing
 
 import (
 	"go/ast"
+	"go/token"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -49,21 +50,55 @@ var (
 
 func runContextBackgroundInTest(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	inspect.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
 		// t.Context() only exists inside a test, so the advice only applies to
 		// test files. Production code is covered by
 		// [concurrency.ContextBackgroundOutsideMain].
-		if !strings.HasSuffix(pass.Fset.File(node.Pos()).Name(), "_test.go") {
+		if fn.Body == nil || !strings.HasSuffix(pass.Fset.File(fn.Pos()).Name(), "_test.go") {
 			return
 		}
-		call := node.(*ast.CallExpr)
-		if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-			if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "context" && (sel.Sel.Name == "Background" || sel.Sel.Name == "TODO") {
-				pass.Reportf(call.Pos(), "use t.Context() instead of context.Background or context.TODO")
-			}
+
+		count, first := countRootContexts(fn.Body)
+		switch {
+		case count == 0:
+		case count == 1:
+			pass.Reportf(first, "use t.Context() instead of context.Background or context.TODO")
+		default:
+			pass.Reportf(first, "use t.Context() instead of context.Background or context.TODO (%d times in %s)", count, fn.Name.Name)
 		}
 	})
 	return nil, nil
+}
+
+// countRootContexts reports how many times a body roots its own context, and
+// where it first does so.
+func countRootContexts(body *ast.BlockStmt) (int, token.Pos) {
+	var count int
+	var first token.Pos
+	ast.Inspect(body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := sel.X.(*ast.Ident)
+		if !ok || ident.Name != "context" {
+			return true
+		}
+		if sel.Sel.Name != "Background" && sel.Sel.Name != "TODO" {
+			return true
+		}
+		if count == 0 {
+			first = call.Pos()
+		}
+		count++
+		return true
+	})
+	return count, first
 }
 
 func runFmtPrintInTest(pass *analysis.Pass) (interface{}, error) {

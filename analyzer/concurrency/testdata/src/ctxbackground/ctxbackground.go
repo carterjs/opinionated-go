@@ -19,3 +19,12 @@ func Placeholder() error {
 	ctx := context.TODO() // want "prefer accepting a context.Context from the caller"
 	return Fetch(ctx)
 }
+
+// Repeated roots its own context more than once, and is reported once.
+func Repeated() error {
+	ctx := context.Background() // want "prefer accepting a context.Context from the caller; Repeated roots its own context 2 times"
+	if err := Fetch(ctx); err != nil {
+		return err
+	}
+	return Fetch(context.TODO())
+}

@@ -48,16 +48,30 @@ func runConstantsAtTop(pass *analysis.Pass) (interface{}, error) {
 		if isTestFile(pass, file) {
 			continue
 		}
+		// One finding per file, at the first stranded block. Where the
+		// constants go is a single decision about the file's shape.
 		var seenFunc bool
+		var stranded int
+		var first token.Pos
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
 			case *ast.FuncDecl:
 				seenFunc = true
 			case *ast.GenDecl:
 				if d.Tok == token.CONST && seenFunc {
-					pass.Reportf(d.Pos(), "constants belong at the top of the file, above the functions that use them")
+					if stranded == 0 {
+						first = d.Pos()
+					}
+					stranded++
 				}
 			}
+		}
+		switch {
+		case stranded == 0:
+		case stranded == 1:
+			pass.Reportf(first, "constants belong at the top of the file, above the functions that use them")
+		default:
+			pass.Reportf(first, "constants belong at the top of the file, above the functions that use them (%d blocks are below)", stranded)
 		}
 	}
 	return nil, nil
@@ -185,8 +199,22 @@ func runErrorsInErrorsFile(pass *analysis.Pass) (interface{}, error) {
 	if total < 2 {
 		return nil, nil
 	}
+
+	// One finding per file. Moving a file's sentinels into errors.go is a
+	// single edit, however many of them there are.
+	var files []string
+	names := make(map[string][]string)
+	positions := make(map[string]token.Pos)
 	for _, stray := range strays {
-		pass.Reportf(stray.pos, "package declares %d sentinel errors; move %s into errors.go, grouped by the feature that returns it", total, stray.name)
+		if _, seen := names[stray.filename]; !seen {
+			files = append(files, stray.filename)
+			positions[stray.filename] = stray.pos
+		}
+		names[stray.filename] = append(names[stray.filename], stray.name)
+	}
+	for _, filename := range files {
+		pass.Reportf(positions[filename], "package declares %d sentinel errors; move %s into errors.go, grouped by the feature that returns them",
+			total, strings.Join(names[filename], ", "))
 	}
 
 	return nil, nil

@@ -1,11 +1,16 @@
 # Error Handling
 
-All errors must be wrapped with error chains, never returned naked. Sentinel errors live at package scope. Never match on error messages—use the type system.
+Errors crossing a package boundary must be wrapped with error chains, never returned naked. Sentinel errors live at package scope. Never match on error messages—use the type system.
 
 
-## Always wrap with `%w`
+## Always wrap with `%w` at the boundary
 
 Use `fmt.Errorf` with the `%w` verb to wrap errors and preserve the chain.
+
+Wrapping earns its keep where the error leaves the package: an **exported**
+function is the last place that knows what the operation was, so it says so. An
+unexported helper's caller is a few lines away and adds that context itself —
+requiring `%w` there is ceremony, and the analyzer does not ask for it.
 
 ```go
 // Do this

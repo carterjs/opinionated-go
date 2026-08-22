@@ -83,20 +83,90 @@ var (
 	}
 )
 
+// runExportedFieldsWithMethods reports a struct that exposes fields directly.
+// The finding is about the type, not about each field that happens to be
+// capitalised, so it is reported once against the declaration and names the
+// fields it means.
 func runExportedFieldsWithMethods(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	declarations := structDeclarations(inspect)
+
+	withMethods := typesWithMethods(inspect)
+
 	inspect.Preorder([]ast.Node{(*ast.StructType)(nil)}, func(node ast.Node) {
 		st := node.(*ast.StructType)
 		if st.Fields == nil || len(st.Fields.List) == 0 {
 			return
 		}
+
+		// The rule is about types that have behaviour. A plain record — a
+		// request payload, a config, a row — is exported fields and nothing
+		// else, and has no methods to route access through.
+		spec, ok := declarations[st]
+		if !ok || !withMethods[spec.Name.Name] {
+			return
+		}
+
+		var exported []string
 		for _, field := range st.Fields.List {
-			if len(field.Names) > 0 && isExported(field.Names[0].Name) {
-				pass.Reportf(field.Pos(), "struct with methods should not have exported fields")
+			for _, name := range field.Names {
+				if isExported(name.Name) {
+					exported = append(exported, name.Name)
+				}
 			}
 		}
+		if len(exported) == 0 {
+			return
+		}
+
+		pass.Reportf(spec.Name.Pos(), "struct %q has methods and should not have exported fields (%s); control access through methods", spec.Name.Name, strings.Join(exported, ", "))
 	})
 	return nil, nil
+}
+
+// typesWithMethods names the types this package declares methods on.
+func typesWithMethods(inspect *inspector.Inspector) map[string]bool {
+	withMethods := make(map[string]bool)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Recv == nil || len(fn.Recv.List) == 0 {
+			return
+		}
+		if name := receiverTypeName(fn.Recv.List[0].Type); name != "" {
+			withMethods[name] = true
+		}
+	})
+	return withMethods
+}
+
+// receiverTypeName unwraps a receiver's pointer and type parameters to the
+// bare type name the method is declared on.
+func receiverTypeName(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.StarExpr:
+		return receiverTypeName(t.X)
+	case *ast.IndexExpr:
+		return receiverTypeName(t.X)
+	case *ast.IndexListExpr:
+		return receiverTypeName(t.X)
+	case *ast.Ident:
+		return t.Name
+	}
+	return ""
+}
+
+// structDeclarations maps each named struct type back to the declaration that
+// names it, so a finding can be reported against the type rather than against
+// whichever field happened to be noticed first.
+func structDeclarations(inspect *inspector.Inspector) map[*ast.StructType]*ast.TypeSpec {
+	declarations := make(map[*ast.StructType]*ast.TypeSpec)
+	inspect.Preorder([]ast.Node{(*ast.TypeSpec)(nil)}, func(node ast.Node) {
+		spec := node.(*ast.TypeSpec)
+		if st, ok := spec.Type.(*ast.StructType); ok {
+			declarations[st] = spec
+		}
+	})
+	return declarations
 }
 
 func runBooleanParameters(pass *analysis.Pass) (interface{}, error) {
@@ -335,6 +405,9 @@ func runMagicNumbers(pass *analysis.Pass) (interface{}, error) {
 			if isConstDecl(decl) {
 				continue
 			}
+			// The same number repeated within one declaration is one constant
+			// waiting to be named, so it is reported once at its first use.
+			reported := make(map[string]bool)
 			ast.Inspect(decl, func(node ast.Node) bool {
 				lit, ok := node.(*ast.BasicLit)
 				if !ok {
@@ -343,9 +416,10 @@ func runMagicNumbers(pass *analysis.Pass) (interface{}, error) {
 				if lit.Kind != token.INT && lit.Kind != token.FLOAT {
 					return true
 				}
-				if allowedLiterals[lit.Value] {
+				if allowedLiterals[lit.Value] || reported[lit.Value] {
 					return true
 				}
+				reported[lit.Value] = true
 				pass.Reportf(lit.Pos(), "magic number %s; give it a named constant", lit.Value)
 				return true
 			})

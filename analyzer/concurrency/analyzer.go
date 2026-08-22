@@ -2,6 +2,7 @@ package concurrency
 
 import (
 	"go/ast"
+	"go/token"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -183,23 +184,47 @@ func runContextBackgroundOutsideMain(pass *analysis.Pass) (interface{}, error) {
 	}
 
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	inspect.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
-		if strings.HasSuffix(pass.Fset.File(node.Pos()).Name(), "_test.go") {
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Body == nil || strings.HasSuffix(pass.Fset.File(fn.Pos()).Name(), "_test.go") {
 			return
 		}
-		call := node.(*ast.CallExpr)
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return
+
+		// One finding per function: taking a context parameter is a single
+		// change, however many roots the body currently creates.
+		var count int
+		var first token.Pos
+		var verb string
+		ast.Inspect(fn.Body, func(inner ast.Node) bool {
+			call, ok := inner.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			ident, ok := sel.X.(*ast.Ident)
+			if !ok || ident.Name != "context" {
+				return true
+			}
+			if sel.Sel.Name != "Background" && sel.Sel.Name != "TODO" {
+				return true
+			}
+			if count == 0 {
+				first, verb = call.Pos(), sel.Sel.Name
+			}
+			count++
+			return true
+		})
+
+		switch {
+		case count == 0:
+		case count == 1:
+			pass.Reportf(first, "prefer accepting a context.Context from the caller; context.%s belongs in main", verb)
+		default:
+			pass.Reportf(first, "prefer accepting a context.Context from the caller; %s roots its own context %d times", fn.Name.Name, count)
 		}
-		ident, ok := sel.X.(*ast.Ident)
-		if !ok || ident.Name != "context" {
-			return
-		}
-		if sel.Sel.Name != "Background" && sel.Sel.Name != "TODO" {
-			return
-		}
-		pass.Reportf(call.Pos(), "prefer accepting a context.Context from the caller; context.%s belongs in main", sel.Sel.Name)
 	})
 
 	return nil, nil

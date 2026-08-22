@@ -18,6 +18,13 @@ func retries() int {
 	return 3 // want "magic number 3"
 }
 
+// The same number repeated in one function is reported once, at its first use.
+func window(offset int) int {
+	start := offset + 7 // want "magic number 7"
+	end := start + 7
+	return end + 7
+}
+
 func empty() int {
 	return 0
 }

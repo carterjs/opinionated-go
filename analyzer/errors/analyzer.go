@@ -11,10 +11,10 @@ import (
 )
 
 var (
-	// NakedErrorReturn errors on naked [error] returns without wrapping.
+	// NakedErrorReturn errors on an exported function returning an [error] without wrapping. Unexported functions are exempt: their caller is the boundary and adds the context.
 	NakedErrorReturn = &analysis.Analyzer{
 		Name:     "naked_error_return",
-		Doc:      "error on naked error returns without wrapping",
+		Doc:      "error on exported functions returning an error without wrapping",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runNakedErrorReturn,
 	}
@@ -60,21 +60,48 @@ var (
 	}
 )
 
+// runNakedErrorReturn reports an error handed back to a caller outside the
+// package without saying what the package was doing when it failed. Wrapping
+// earns its keep at the boundary: an unexported helper's caller is a few lines
+// away and adds the context itself, so requiring %w there is ceremony. An
+// exported function is the last place that knows what the operation was.
 func runNakedErrorReturn(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	inspect.Preorder([]ast.Node{(*ast.ReturnStmt)(nil)}, func(node ast.Node) {
-		ret := node.(*ast.ReturnStmt)
-		if len(ret.Results) == 0 {
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Body == nil || !isExported(fn.Name.Name) {
 			return
 		}
 
-		for _, result := range ret.Results {
-			if ident, ok := result.(*ast.Ident); ok && ident.Name == "err" {
-				pass.Reportf(ident.Pos(), "return error without wrapping: use fmt.Errorf with %%w")
+		// One finding per function. A function that hands err back in four
+		// places has one habit, not four defects.
+		var naked int
+		ast.Inspect(fn.Body, func(inner ast.Node) bool {
+			ret, ok := inner.(*ast.ReturnStmt)
+			if !ok {
+				return true
 			}
+			for _, result := range ret.Results {
+				if ident, ok := result.(*ast.Ident); ok && ident.Name == "err" {
+					naked++
+				}
+			}
+			return true
+		})
+		if naked == 0 {
+			return
 		}
+		if naked == 1 {
+			pass.Reportf(fn.Name.Pos(), "%s returns an error without wrapping: use fmt.Errorf with %%w", fn.Name.Name)
+			return
+		}
+		pass.Reportf(fn.Name.Pos(), "%s returns an error without wrapping in %d places: use fmt.Errorf with %%w", fn.Name.Name, naked)
 	})
 	return nil, nil
+}
+
+func isExported(name string) bool {
+	return len(name) > 0 && name[0] >= 'A' && name[0] <= 'Z'
 }
 
 func runStringErrorMatching(pass *analysis.Pass) (interface{}, error) {

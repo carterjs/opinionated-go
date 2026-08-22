@@ -19,7 +19,7 @@ A single subject, stated consistently across every layer. These rules are prescr
 - **Never shadow a built-in with a function.** `func len(...)`, `func copy(...)`, `func max(...)` take the built-in's name out of the file. A **method** may use these names freely: it is only ever reached through a receiver, so it shadows nothing.
 - **`ctx` always `ctx`.** Any `context.Context` parameter is always named `ctx`. Never `c`, `context`, or anything else.
 - **`err` always `err`.** Any `error` variable is always named `err`. Never `e`, `erro`, or anything else.
-- **Receiver names.** A short, readable word derived from the type name — `store`, `mock`, `adapter`, `service`. Never a single letter. Never `s`, `m`, `a`. Consistent across all methods on the type.
+- **Receiver names.** A short, readable word derived from the type name — `store`, `mock`, `adapter`, `service`. Never a single letter. Never `s`, `m`, `a`. Consistent across all methods on the type. The name is a property of the type, so it is one decision made once, not one per method.
 - **Getter methods.** Use the Go idiom: `Name()` not `GetName()`. Setter methods are `SetField()`. Never `Get<Field>()` prefix.
 - **Package names.** Lowercase, single word, no underscores. Must match the directory name. Never `util`, `common`, `helpers`, `shared`, or similar generic names.
 - **File names.** No underscores except `_test.go` and `_<platform>_test.go` patterns. Name files after their primary concept (`store.go`, `schema.go`), never their role (`helpers.go`, `utils.go`).
@@ -44,7 +44,7 @@ See `references/functions.md` for detailed guidance on function design, methods,
 
 ## Structs & Types
 
-- **No exported fields on structs that have methods.** If a type has behavior, control access through methods.
+- **No exported fields on structs that have methods.** If a type has behavior, control access through methods. A plain record with no methods — a request payload, a config, a database row — is exported fields and nothing else, and is not what this rule is about.
 - **Constructors required** when a struct has unexported fields or requires custom zero-value initialization. Name them `New<Type>`.
 - **Zero value must be valid and usable** without a constructor for simple value types.
 - **Config structs use `<= 0` checks for defaults.** Domain packages own their defaults; callers that don't need tuning pass `Config{}`.
