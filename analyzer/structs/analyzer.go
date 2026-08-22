@@ -2,6 +2,7 @@ package structs
 
 import (
 	"go/ast"
+	"go/token"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -72,6 +73,13 @@ var (
 		Doc:      "warn on interfaces with more than 5 methods",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runInterfaceTooLarge,
+	}
+	// MagicNumbers errors on numeric literals other than 0 and 1 outside a constant declaration.
+	MagicNumbers = &analysis.Analyzer{
+		Name:     "magic_numbers",
+		Doc:      "error on numeric literals other than 0 and 1 outside constant declarations",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runMagicNumbers,
 	}
 )
 
@@ -304,3 +312,49 @@ func runInterfaceTooLarge(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
+// allowedLiterals are the numeric literals that carry their meaning on their
+// face: an empty count, a single step, an identity.
+var allowedLiterals = map[string]bool{
+	"0":   true,
+	"1":   true,
+	"0.0": true,
+	"1.0": true,
+}
+
+// runMagicNumbers reports numeric literals that should have been named. A
+// number written where it is used tells the reader what the machine does but
+// not what the author meant; a constant carries the meaning to every use.
+// Constant declarations are where a literal belongs, and test tables are where
+// concrete values are the point, so both are exempt.
+func runMagicNumbers(pass *analysis.Pass) (interface{}, error) {
+	for _, file := range pass.Files {
+		if strings.HasSuffix(pass.Fset.Position(file.Pos()).Filename, "_test.go") {
+			continue
+		}
+		for _, decl := range file.Decls {
+			if isConstDecl(decl) {
+				continue
+			}
+			ast.Inspect(decl, func(node ast.Node) bool {
+				lit, ok := node.(*ast.BasicLit)
+				if !ok {
+					return true
+				}
+				if lit.Kind != token.INT && lit.Kind != token.FLOAT {
+					return true
+				}
+				if allowedLiterals[lit.Value] {
+					return true
+				}
+				pass.Reportf(lit.Pos(), "magic number %s; give it a named constant", lit.Value)
+				return true
+			})
+		}
+	}
+	return nil, nil
+}
+
+func isConstDecl(decl ast.Decl) bool {
+	gen, ok := decl.(*ast.GenDecl)
+	return ok && gen.Tok == token.CONST
+}

@@ -52,3 +52,8 @@ func TestNoConstructorWithUnexportedFields(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), structs.NoConstructorWithUnexportedFields, "noconstructorunexported")
 }
+
+func TestMagicNumbers(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.MagicNumbers, "magicnumbers")
+}

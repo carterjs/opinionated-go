@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	// ContextBackgroundInTest errors on [context.Background] in tests (requires Go 1.20+ for [testing.T.Context]).
+	// ContextBackgroundInTest errors on [context.Background] in test files (requires Go 1.24+ for [testing.T.Context]).
 	ContextBackgroundInTest = &analysis.Analyzer{
 		Name:     "context_background_in_test",
-		Doc:      "error on context.Background in tests",
+		Doc:      "error on context.Background in _test.go files",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runContextBackgroundInTest,
 	}
@@ -50,6 +50,12 @@ var (
 func runContextBackgroundInTest(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	inspect.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
+		// t.Context() only exists inside a test, so the advice only applies to
+		// test files. Production code is covered by
+		// [concurrency.ContextBackgroundOutsideMain].
+		if !strings.HasSuffix(pass.Fset.File(node.Pos()).Name(), "_test.go") {
+			return
+		}
 		call := node.(*ast.CallExpr)
 		if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
 			if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "context" && (sel.Sel.Name == "Background" || sel.Sel.Name == "TODO") {

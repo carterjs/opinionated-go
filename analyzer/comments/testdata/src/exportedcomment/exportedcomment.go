@@ -14,10 +14,10 @@ func Wrong() {}
 // without any dividers or empty lines.
 func GoodFunction() {}
 
-// BrokenFunction has a divider // want "should not have empty lines"
+// ParagraphFunction separates paragraphs with an empty comment line.
 //
-// in the middle of the comment
-func BrokenFunction() {}
+// The empty line is fine; it is how godoc marks a paragraph break.
+func ParagraphFunction() {}
 
 // DividerFunction uses dashes // want "should not use repeated"
 // --- as a divider

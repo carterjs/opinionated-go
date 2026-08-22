@@ -45,6 +45,13 @@ var (
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runContextWithNotAssigned,
 	}
+	// ContextBackgroundOutsideMain warns on [context.Background] and [context.TODO] outside package main. A root context is something main creates once and passes down.
+	ContextBackgroundOutsideMain = &analysis.Analyzer{
+		Name:     "context_background_outside_main",
+		Doc:      "warn on context.Background or context.TODO outside package main",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runContextBackgroundOutsideMain,
+	}
 )
 
 func runExportedFuncAcceptsChannel(pass *analysis.Pass) (interface{}, error) {
@@ -163,4 +170,37 @@ func typeString(expr ast.Expr) string {
 		return "*" + typeString(t.X)
 	}
 	return ""
+}
+
+// runContextBackgroundOutsideMain reports a context rooted in the package that
+// uses it. main owns the root context and hands it down; a domain package that
+// makes its own has quietly opted out of the caller's cancellation and
+// deadline. Test files are exempt — [testing.ContextBackgroundInTest] covers
+// those, where the answer is t.Context() rather than a parameter.
+func runContextBackgroundOutsideMain(pass *analysis.Pass) (interface{}, error) {
+	if pass.Pkg.Name() == "main" {
+		return nil, nil
+	}
+
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.CallExpr)(nil)}, func(node ast.Node) {
+		if strings.HasSuffix(pass.Fset.File(node.Pos()).Name(), "_test.go") {
+			return
+		}
+		call := node.(*ast.CallExpr)
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return
+		}
+		ident, ok := sel.X.(*ast.Ident)
+		if !ok || ident.Name != "context" {
+			return
+		}
+		if sel.Sel.Name != "Background" && sel.Sel.Name != "TODO" {
+			return
+		}
+		pass.Reportf(call.Pos(), "prefer accepting a context.Context from the caller; context.%s belongs in main", sel.Sel.Name)
+	})
+
+	return nil, nil
 }

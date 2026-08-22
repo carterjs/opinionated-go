@@ -62,3 +62,8 @@ func TestStutteringNames(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), naming.StutteringNames, "stuttering")
 }
+
+func TestShadowBuiltins(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), naming.ShadowBuiltins, "shadowbuiltins")
+}

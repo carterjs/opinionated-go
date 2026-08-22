@@ -32,3 +32,8 @@ func TestContextWithNotAssigned(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), concurrency.ContextWithNotAssigned, "contextwithnotassigned")
 }
+
+func TestContextBackgroundOutsideMain(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), concurrency.ContextBackgroundOutsideMain, "ctxbackground", "ctxbackgroundmain")
+}

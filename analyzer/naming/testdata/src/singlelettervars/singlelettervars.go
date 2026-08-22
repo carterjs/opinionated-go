@@ -1,6 +1,9 @@
 package singlelettervars
 
-import "fmt"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestLoopVar() {
 	for i := 0; i < 10; i++ { // i is OK in for loop
@@ -60,4 +63,41 @@ func TestLargeScopeParam(x int) { // want "parameter .* is too short"
 
 func TestUnderscoreParam(_ int) { // OK: underscore is allowed
 	fmt.Println("nothing")
+}
+
+// n is the conventional name for a count and is allowed at any span.
+func TestCountingVariable(values []string) int {
+	n := 0
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		n++
+	}
+	fmt.Println(n)
+	return n
+}
+
+// A name read exactly once stays readable however far the reference sits.
+func TestSingleUseAcrossManyLines() {
+	x := 10
+	fmt.Println("one")
+	fmt.Println("two")
+	fmt.Println("three")
+	fmt.Println("four")
+	fmt.Println("five")
+	fmt.Println("six")
+	fmt.Println(x) // OK: x is used once
+}
+
+// A testing parameter keeps its idiomatic name outside _test.go files too.
+func TestHelperOutsideTestFile(t *testing.T, values []string) {
+	t.Helper()
+	for _, value := range values {
+		if value == "" {
+			t.Error("empty value")
+		}
+	}
+	t.Log("checked")
+	t.Log("done")
 }

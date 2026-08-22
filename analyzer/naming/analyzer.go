@@ -28,10 +28,10 @@ var (
 		Run:      runConsistentReceivers,
 	}
 
-	// ShadowBuiltins errors on declaring functions that shadow Go built-ins.
+	// ShadowBuiltins errors on declaring package-level functions that shadow Go built-ins. Methods are exempt: a method name is always reached through a receiver, so it cannot shadow anything.
 	ShadowBuiltins = &analysis.Analyzer{
 		Name:     "shadow_builtins",
-		Doc:      "error on declaring functions that shadow Go built-ins",
+		Doc:      "error on declaring functions (not methods) that shadow Go built-ins",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runShadowBuiltins,
 	}
@@ -321,14 +321,6 @@ func runSingleLetterVariables(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func isTestFilePath(pass *analysis.Pass) bool {
-	if len(pass.Files) == 0 {
-		return false
-	}
-	filename := pass.Fset.File(pass.Files[0].Pos()).Name()
-	return strings.HasSuffix(filename, "_test.go")
-}
-
 func trackForLoopVars(inspect *inspector.Inspector) map[string]bool {
 	allowedContexts := make(map[string]bool)
 	inspect.Preorder([]ast.Node{(*ast.ForStmt)(nil)}, func(node ast.Node) {
@@ -359,63 +351,82 @@ func checkFunctionVariables(pass *analysis.Pass, node ast.Node, isTestFile bool,
 		body = n.Body
 	}
 
-	checkFunctionParams(pass, params, isTestFile, body)
+	checkFunctionParams(pass, params, body)
 
 	if body != nil {
 		checkLocalVariables(pass, body, allowedContexts, isTestFile)
 	}
 }
 
-func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, isTestFile bool, body *ast.BlockStmt) {
+func checkFunctionParams(pass *analysis.Pass, params *ast.FieldList, body *ast.BlockStmt) {
 	if params == nil || body == nil {
 		return
 	}
 
-	// Build map of parameter usage spans
-	paramUsage := make(map[string]token.Pos)
-	ast.Inspect(body, func(n ast.Node) bool {
-		if ident, ok := n.(*ast.Ident); ok {
-			paramUsage[ident.Name] = ident.Pos()
-		}
-		return true
-	})
+	uses := countIdentUses(body)
 
 	for _, param := range params.List {
 		paramType := typeString(param.Type)
 		for _, name := range param.Names {
-			if len(name.Name) == 1 && name.Name != "_" && !isIdiomatic(name.Name, paramType, isTestFile) {
-				// Check if parameter is used within 5 lines
-				if lastUsePos, used := paramUsage[name.Name]; used {
-					declLine := pass.Fset.Position(name.Pos()).Line
-					lastUseLine := pass.Fset.Position(lastUsePos).Line
-					span := lastUseLine - declLine
-					if span <= 5 {
-						continue // Allow if used within 5 lines
-					}
-				}
-				pass.Reportf(name.Pos(), "parameter %q is too short; use a descriptive name", name.Name)
+			if len(name.Name) != 1 || name.Name == "_" || isIdiomatic(name.Name, paramType) {
+				continue
 			}
+			use, used := uses[name.Name]
+			if !used {
+				continue
+			}
+			// A name referenced once needs no memory to follow, however far
+			// down the function the single reference sits.
+			if use.count <= 1 {
+				continue
+			}
+			declLine := pass.Fset.Position(name.Pos()).Line
+			lastUseLine := pass.Fset.Position(use.last).Line
+			if lastUseLine-declLine <= 5 {
+				continue
+			}
+			pass.Reportf(name.Pos(), "parameter %q is too short; use a descriptive name", name.Name)
 		}
 	}
 }
 
-func isIdiomatic(name, paramType string, isTestFile bool) bool {
-	if isTestFile {
-		// Standard testing parameters
-		if name == "t" && (paramType == "testing.T" || paramType == "*testing.T" || paramType == "testing.TB" || paramType == "*testing.TB") {
-			return true
+// identUse records how often a name is referenced within a function body and
+// where the last of those references is.
+type identUse struct {
+	count int
+	last  token.Pos
+}
+
+func countIdentUses(body *ast.BlockStmt) map[string]identUse {
+	uses := make(map[string]identUse)
+	ast.Inspect(body, func(node ast.Node) bool {
+		if ident, ok := node.(*ast.Ident); ok {
+			use := uses[ident.Name]
+			use.count++
+			use.last = ident.Pos()
+			uses[ident.Name] = use
 		}
-		if name == "b" && (paramType == "testing.B" || paramType == "*testing.B") {
-			return true
-		}
-		if name == "m" && (paramType == "testing.M" || paramType == "*testing.M") {
-			return true
-		}
-		if name == "f" && (paramType == "testing.F" || paramType == "*testing.F") {
-			return true
-		}
+		return true
+	})
+	return uses
+}
+
+func isIdiomatic(name, paramType string) bool {
+	// The standard testing parameters are idiomatic wherever they appear. A
+	// helper that takes a *testing.T from a non-test file is still spelled t.
+	if name == "t" && (paramType == "testing.T" || paramType == "*testing.T" || paramType == "testing.TB" || paramType == "*testing.TB") {
+		return true
 	}
-	if name == "n" && paramType == "ast.Node" {
+	if name == "b" && (paramType == "testing.B" || paramType == "*testing.B") {
+		return true
+	}
+	if name == "m" && (paramType == "testing.M" || paramType == "*testing.M") {
+		return true
+	}
+	if name == "f" && (paramType == "testing.F" || paramType == "*testing.F") {
+		return true
+	}
+	if isAlwaysIdiomatic(name) {
 		return true
 	}
 	if name == "w" && (paramType == "http.ResponseWriter" || paramType == "ResponseWriter") {
@@ -439,56 +450,60 @@ func isIdiomatic(name, paramType string, isTestFile bool) bool {
 	return false
 }
 
+// isAlwaysIdiomatic reports whether the single-letter name carries a settled
+// meaning in Go regardless of where it appears. n is the conventional name for
+// a count or a byte tally and reads worse when spelled out.
+func isAlwaysIdiomatic(name string) bool {
+	return name == "n"
+}
+
 func checkLocalVariables(pass *analysis.Pass, body *ast.BlockStmt, allowedContexts map[string]bool, isTestFile bool) {
 	if isTestFile {
 		return
 	}
-	// Track single-letter variable declarations and their usage spans
-	varDecls := make(map[string]token.Pos)  // var name -> declaration position
-	varLastUse := make(map[string]token.Pos) // var name -> last usage position
 
-	// First pass: find all single-letter variable declarations
-	ast.Inspect(body, func(n ast.Node) bool {
-		switch stmt := n.(type) {
-		case *ast.AssignStmt:
-			if stmt.Tok == token.ASSIGN || stmt.Tok == token.DEFINE {
-				for i, lhs := range stmt.Lhs {
-					if ident, ok := lhs.(*ast.Ident); ok && len(ident.Name) == 1 && !allowedContexts[ident.Name] {
-						if ident.Name != "_" {
-							// Don't record type assertions
-							if i < len(stmt.Rhs) {
-								if _, ok := stmt.Rhs[i].(*ast.TypeAssertExpr); ok {
-									continue
-								}
-							}
-							varDecls[ident.Name] = ident.Pos()
-						}
-					}
+	// Find every single-letter variable the body declares.
+	varDecls := make(map[string]token.Pos)
+	ast.Inspect(body, func(node ast.Node) bool {
+		assign, ok := node.(*ast.AssignStmt)
+		if !ok || (assign.Tok != token.ASSIGN && assign.Tok != token.DEFINE) {
+			return true
+		}
+		for i, lhs := range assign.Lhs {
+			ident, ok := lhs.(*ast.Ident)
+			if !ok || len(ident.Name) != 1 || ident.Name == "_" {
+				continue
+			}
+			if allowedContexts[ident.Name] || isAlwaysIdiomatic(ident.Name) {
+				continue
+			}
+			// Don't record type assertions
+			if i < len(assign.Rhs) {
+				if _, ok := assign.Rhs[i].(*ast.TypeAssertExpr); ok {
+					continue
 				}
 			}
+			varDecls[ident.Name] = ident.Pos()
 		}
 		return true
 	})
 
-	// Second pass: find last usage of each variable
-	ast.Inspect(body, func(n ast.Node) bool {
-		if ident, ok := n.(*ast.Ident); ok {
-			if _, isDeclared := varDecls[ident.Name]; isDeclared {
-				varLastUse[ident.Name] = ident.Pos()
-			}
-		}
-		return true
-	})
+	uses := countIdentUses(body)
 
-	// Check if any variable spans more than 5 lines
 	for varName, declPos := range varDecls {
-		lastUsePos, hasUsage := varLastUse[varName]
+		use, hasUsage := uses[varName]
 		if !hasUsage {
 			continue // Variable not used after declaration
 		}
 
+		// The declaration itself shows up as a reference; a name read exactly
+		// once after it stays readable no matter how far apart the two sit.
+		if use.count-1 <= 1 {
+			continue
+		}
+
 		declLine := pass.Fset.Position(declPos).Line
-		lastUseLine := pass.Fset.Position(lastUsePos).Line
+		lastUseLine := pass.Fset.Position(use.last).Line
 		span := lastUseLine - declLine
 
 		if span > 5 {
@@ -755,6 +770,11 @@ func runShadowBuiltins(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
 		fn := node.(*ast.FuncDecl)
+		// A method is only ever called through a receiver, so it shadows
+		// nothing. Only plain functions can take the built-in's place.
+		if fn.Recv != nil {
+			return
+		}
 		if builtins[fn.Name.Name] {
 			pass.Reportf(fn.Name.Pos(), "function %q shadows Go built-in; use a different name", fn.Name.Name)
 		}

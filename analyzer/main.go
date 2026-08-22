@@ -6,6 +6,7 @@ import (
 	"github.com/carterjs/opinionated-go/analyzer/comments"
 	"github.com/carterjs/opinionated-go/analyzer/concurrency"
 	"github.com/carterjs/opinionated-go/analyzer/errors"
+	"github.com/carterjs/opinionated-go/analyzer/layout"
 	"github.com/carterjs/opinionated-go/analyzer/naming"
 	"github.com/carterjs/opinionated-go/analyzer/pkgnames"
 	"github.com/carterjs/opinionated-go/analyzer/structs"
@@ -29,6 +30,7 @@ func main() {
 		naming.StutteringNames,
 
 		comments.ExportedCommentFormat,
+		comments.DetachedComment,
 
 		errors.NakedErrorReturn,
 		errors.StringErrorMatching,
@@ -46,12 +48,18 @@ func main() {
 		structs.FunctionTooLong,
 		structs.TooManyParameters,
 		structs.InterfaceTooLarge,
+		structs.MagicNumbers,
 
 		concurrency.ExportedFuncAcceptsChannel,
 		concurrency.ExportedFuncAcceptsFunc,
 		concurrency.ContextNotFirstArg,
 		concurrency.ContextAsStructField,
 		concurrency.ContextWithNotAssigned,
+		concurrency.ContextBackgroundOutsideMain,
+
+		layout.ConstantsAtTop,
+		layout.TypeBeforeConstructor,
+		layout.ErrorsInErrorsFile,
 
 		pkgnames.InitFunction,
 
