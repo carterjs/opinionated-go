@@ -192,8 +192,6 @@ func runSentinelNotAtPackageLevel(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-// Helpers
-
 func isErrorsNewCall(expr ast.Expr) bool {
 	call, ok := expr.(*ast.CallExpr)
 	if !ok {

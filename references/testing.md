@@ -29,7 +29,7 @@ Tests are contracts that serve as documentation. Apply the same conventions as p
 - **`t.Log` / `t.Logf`** for debug output. Never `fmt.Print*` inside tests.
 - **`t.Attr`** for structured key-value metadata associated with the test run — prefer over ad-hoc `t.Log` calls when recording structured information for CI or tooling.
 - **`t.Output()`** when a test requires an `io.Writer`. Never pass `os.Stdout` or `os.Stderr` to code under test.
-- **`t.Context()`** always. Never `context.Background()` or `context.TODO()` inside a test function.
+- **`t.Context()`** always. Never `context.Background()` or `context.TODO()` inside a `_test.go` file. Outside tests the rule is different: a root context belongs to `main`, and everything else accepts one from its caller.
 
 ## Assertions
 

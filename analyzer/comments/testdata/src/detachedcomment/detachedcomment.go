@@ -28,6 +28,22 @@ func NewStore() *Store {
 
 var errNotFound = errors.New("not found") // a trailing comment is not detached
 
+type mapping struct {
+	name  string
+	value int
+}
+
+var mappings = []mapping{
+	{"a", 1},
+	// a comment on a composite literal entry bumps the entry below it
+	{"b", 2},
+	{"c", 3},
+
+	// a detached comment inside a composite literal is still detached // want "comment must bump up against the symbol"
+
+	{"d", 4},
+}
+
 //go:generate echo directives are not documentation
 
 // a comment at the end of the file documents nothing. // want "comment must bump up against the symbol"

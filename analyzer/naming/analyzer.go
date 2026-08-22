@@ -597,8 +597,6 @@ func runGenericPackageNames(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-// Helpers
-
 func isExported(name string) bool {
 	return len(name) > 0 && unicode.IsUpper(rune(name[0]))
 }

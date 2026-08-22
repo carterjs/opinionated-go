@@ -145,23 +145,21 @@ func checkLegacyDirectives(pass *analysis.Pass, comments []*ast.CommentGroup) {
 	}
 }
 
-// runDetachedComment reports file-scope comments that float free of a
-// declaration. The parser only records a comment group as a node's Doc when no
-// blank line separates the two, so any remaining group that sits on its own
-// line outside a function body is either separated from what it describes or
-// describes nothing.
+// runDetachedComment reports file-scope comments that float free of the code
+// they describe. A comment earns its place by sitting directly above something;
+// once a blank line comes between them, or nothing follows at all, the reader
+// has to guess what it refers to.
 func runDetachedComment(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		if strings.HasSuffix(pass.Fset.Position(file.Pos()).Filename, "_test.go") {
 			continue
 		}
 
-		docs := documentationGroups(file)
 		bodies := functionBodies(file)
 		occupied := codeLines(pass.Fset, file)
 
 		for _, group := range file.Comments {
-			if docs[group] || isDirectiveGroup(group) {
+			if isDirectiveGroup(group) {
 				continue
 			}
 			// A header above the package clause is a license or build banner,
@@ -169,45 +167,21 @@ func runDetachedComment(pass *analysis.Pass) (interface{}, error) {
 			if group.End() < file.Package {
 				continue
 			}
+			// Comments inside a function body are the author's running
+			// commentary, judged by a different rule.
 			if withinAny(bodies, group.Pos()) {
 				continue
 			}
 			if occupied[pass.Fset.Position(group.Pos()).Line] {
 				continue // trailing comment on a line of code
 			}
+			if occupied[pass.Fset.Position(group.End()).Line+1] {
+				continue // bumps up against the line below it
+			}
 			pass.Reportf(group.Pos(), "comment must bump up against the symbol it documents; remove the blank line or delete the comment")
 		}
 	}
 	return nil, nil
-}
-
-// documentationGroups collects every comment group the parser attached to a
-// declaration as its documentation.
-func documentationGroups(file *ast.File) map[*ast.CommentGroup]bool {
-	docs := map[*ast.CommentGroup]bool{file.Doc: true}
-	ast.Inspect(file, func(node ast.Node) bool {
-		switch n := node.(type) {
-		case *ast.GenDecl:
-			docs[n.Doc] = true
-		case *ast.FuncDecl:
-			docs[n.Doc] = true
-		case *ast.TypeSpec:
-			docs[n.Doc] = true
-			docs[n.Comment] = true
-		case *ast.ValueSpec:
-			docs[n.Doc] = true
-			docs[n.Comment] = true
-		case *ast.ImportSpec:
-			docs[n.Doc] = true
-			docs[n.Comment] = true
-		case *ast.Field:
-			docs[n.Doc] = true
-			docs[n.Comment] = true
-		}
-		return true
-	})
-	delete(docs, nil)
-	return docs
 }
 
 // functionBodies returns the position ranges of every function body in the
