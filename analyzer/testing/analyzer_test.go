@@ -32,3 +32,23 @@ func TestTestNameInLoop(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), analysistesting.TestNameInLoop, "testnameloop")
 }
+
+func TestTestFunctionNaming(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), analysistesting.TestFunctionNaming, "testnaming")
+}
+
+func TestTestCaseNaming(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), analysistesting.TestCaseNaming, "casenaming")
+}
+
+func TestTableDrivenTest(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), analysistesting.TableDrivenTest, "tabledriven")
+}
+
+func TestTestParallel(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), analysistesting.TestParallel, "parallel")
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/carterjs/opinionated-go/analyzer/layout"
 	"github.com/carterjs/opinionated-go/analyzer/naming"
 	"github.com/carterjs/opinionated-go/analyzer/pkgnames"
+	"github.com/carterjs/opinionated-go/analyzer/signatures"
 	"github.com/carterjs/opinionated-go/analyzer/structs"
 	"github.com/carterjs/opinionated-go/analyzer/testing"
 )
@@ -31,6 +32,8 @@ func main() {
 
 		comments.ExportedCommentFormat,
 		comments.DetachedComment,
+		comments.DocCommentTooLong,
+		comments.InlineCommentTooLong,
 
 		errors.NakedErrorReturn,
 		errors.StringErrorMatching,
@@ -49,6 +52,12 @@ func main() {
 		structs.TooManyParameters,
 		structs.InterfaceTooLarge,
 		structs.MagicNumbers,
+		structs.OsExitOutsideMain,
+		structs.MainDoesMoreThanWire,
+
+		signatures.AbsenceSpelling,
+		signatures.RecordValueWithBool,
+		signatures.AdjacentSameTypeParameters,
 
 		concurrency.ExportedFuncAcceptsChannel,
 		concurrency.ExportedFuncAcceptsFunc,
@@ -68,5 +77,9 @@ func main() {
 		testing.StdoutStderrInTest,
 		testing.NoSleepInTests,
 		testing.TestNameInLoop,
+		testing.TestFunctionNaming,
+		testing.TestCaseNaming,
+		testing.TableDrivenTest,
+		testing.TestParallel,
 	)
 }

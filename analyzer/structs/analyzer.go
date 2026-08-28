@@ -10,6 +10,15 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+const (
+	// maxParameters is the point past which a signature owes its callers a struct.
+	maxParameters = 4
+	// maxInterfaceMethods is the point past which an interface has stopped being an abstraction.
+	maxInterfaceMethods = 5
+	// maxMainStatements is the point past which main has stopped only wiring.
+	maxMainStatements = 10
+)
+
 var (
 	// ExportedFieldsWithMethods errors on exported fields in structs with methods.
 	ExportedFieldsWithMethods = &analysis.Analyzer{
@@ -38,6 +47,20 @@ var (
 		Doc:      "error on os.Getenv outside main",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runGetenvOutsideMain,
+	}
+	// OsExitOutsideMain errors on [os.Exit] outside main.
+	OsExitOutsideMain = &analysis.Analyzer{
+		Name:     "os_exit_outside_main",
+		Doc:      "error on os.Exit outside func main; every other function returns an error and lets its caller decide",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runOsExitOutsideMain,
+	}
+	// MainDoesMoreThanWire warns when main holds logic that belongs in Run.
+	MainDoesMoreThanWire = &analysis.Analyzer{
+		Name:     "main_does_more_than_wire",
+		Doc:      "warn when func main does more than wire and exit; logic belongs in a Run function a test can call",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runMainDoesMoreThanWire,
 	}
 	// GlobalSlogFunctions errors on global [log/slog] function calls.
 	GlobalSlogFunctions = &analysis.Analyzer{
@@ -255,6 +278,59 @@ func runGetenvOutsideMain(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
+// runOsExitOutsideMain reports os.Exit outside main. Exiting is the one
+// decision a library never gets to make for its caller; everywhere else the
+// answer is an error returned up to the function that owns the process.
+func runOsExitOutsideMain(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Body == nil {
+			return
+		}
+		// TestMain owns the test binary's exit code the same way main owns the program's.
+		if fn.Recv == nil && (isProgramMain(pass, fn) || fn.Name.Name == "TestMain") {
+			return
+		}
+
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if ident, ok := selector.X.(*ast.Ident); ok && ident.Name == "os" && selector.Sel.Name == "Exit" {
+					pass.Reportf(call.Pos(), "os.Exit only allowed in main; return an error and let the caller decide")
+				}
+			}
+			return true
+		})
+	})
+	return nil, nil
+}
+
+// runMainDoesMoreThanWire reports a main that has grown past wiring. Logic
+// inside main is logic no test can reach without starting a process, so it
+// belongs in a Run function that takes its dependencies and returns an error.
+func runMainDoesMoreThanWire(pass *analysis.Pass) (interface{}, error) {
+	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
+		fn := node.(*ast.FuncDecl)
+		if fn.Body == nil || !isProgramMain(pass, fn) {
+			return
+		}
+		if len(fn.Body.List) > maxMainStatements {
+			pass.Reportf(fn.Pos(), "main has %d statements; main wires and exits, so move the logic into Run(ctx context.Context, ...) error", len(fn.Body.List))
+		}
+	})
+	return nil, nil
+}
+
+// isProgramMain reports whether fn is the entry point of a program.
+func isProgramMain(pass *analysis.Pass, fn *ast.FuncDecl) bool {
+	return fn.Recv == nil && fn.Name.Name == "main" && pass.Pkg.Name() == "main"
+}
+
 func runGlobalSlogFunctions(pass *analysis.Pass) (interface{}, error) {
 	slogFuncs := map[string]bool{
 		"Info":         true,
@@ -353,14 +429,21 @@ func runTooManyParameters(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil)}, func(node ast.Node) {
 		fn := node.(*ast.FuncDecl)
-		if fn.Type.Params == nil {
+		if fn.Type.Params == nil || !isExported(fn.Name.Name) {
 			return
 		}
 
-		// Count parameters, excluding receiver for methods
-		params := fn.Type.Params.List
-		if len(params) > 4 {
-			pass.Reportf(fn.Pos(), "function has %d parameters; use config struct for more than 4", len(params))
+		// `a, b, c string` is one field naming three parameters, and counting fields lets it past the limit.
+		count := 0
+		for _, field := range fn.Type.Params.List {
+			if len(field.Names) == 0 {
+				count++
+				continue
+			}
+			count += len(field.Names)
+		}
+		if count > maxParameters {
+			pass.Reportf(fn.Pos(), "function has %d parameters; use config struct for more than %d", count, maxParameters)
 		}
 	})
 	return nil, nil
@@ -368,18 +451,37 @@ func runTooManyParameters(pass *analysis.Pass) (interface{}, error) {
 
 func runInterfaceTooLarge(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	named := interfaceDeclarations(inspect)
 	inspect.Preorder([]ast.Node{(*ast.InterfaceType)(nil)}, func(node ast.Node) {
 		iface := node.(*ast.InterfaceType)
 		if iface.Methods == nil {
 			return
 		}
 
+		// An unexported interface answers to its own package; an anonymous one has no name to judge.
+		spec, ok := named[iface]
+		if !ok || !isExported(spec.Name.Name) {
+			return
+		}
+
 		methodCount := len(iface.Methods.List)
-		if methodCount > 5 {
-			pass.Reportf(iface.Pos(), "interface has %d methods; keep interfaces small (5 or fewer)", methodCount)
+		if methodCount > maxInterfaceMethods {
+			pass.Reportf(iface.Pos(), "interface has %d methods; keep interfaces small (%d or fewer)", methodCount, maxInterfaceMethods)
 		}
 	})
 	return nil, nil
+}
+
+// interfaceDeclarations maps each named interface type to the spec that names it.
+func interfaceDeclarations(inspect *inspector.Inspector) map[*ast.InterfaceType]*ast.TypeSpec {
+	declarations := make(map[*ast.InterfaceType]*ast.TypeSpec)
+	inspect.Preorder([]ast.Node{(*ast.TypeSpec)(nil)}, func(node ast.Node) {
+		spec := node.(*ast.TypeSpec)
+		if iface, ok := spec.Type.(*ast.InterfaceType); ok {
+			declarations[iface] = spec
+		}
+	})
+	return declarations
 }
 
 // allowedLiterals are the numeric literals that carry their meaning on their

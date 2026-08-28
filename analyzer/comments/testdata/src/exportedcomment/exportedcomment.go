@@ -1,3 +1,6 @@
+//go:build ignore || ignore || want || ignore || ignore || ignore
+// +build ignore ignore want ignore ignore ignore
+
 // Package exportedcomment tests comment format rules.
 package exportedcomment
 
@@ -40,5 +43,4 @@ var ExportedVar = 0 // want "exported symbol.*must have a doc comment"
 // GoodVariable is properly documented.
 var GoodVariable = ""
 
-// +build ignore // want "use //go:build instead"
 const _ = 0

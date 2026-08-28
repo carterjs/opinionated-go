@@ -17,3 +17,13 @@ func TestDetachedComment(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), comments.DetachedComment, "detachedcomment")
 }
+
+func TestDocCommentTooLong(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), comments.DocCommentTooLong, "doclength")
+}
+
+func TestInlineCommentTooLong(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), comments.InlineCommentTooLong, "inlinelength")
+}
