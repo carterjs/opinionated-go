@@ -19,6 +19,25 @@ func Process(ctx context.Context, req *Request, cfg Config) error
 func Process(ctx context.Context, req *Request, timeout time.Duration, retries int, debug bool) error
 ```
 
+### When to group
+
+Collapse parameters into a struct when the signature crosses four, when two of
+the same type sit next to each other — callers will swap them — or when the same
+set travels together through several calls.
+
+| Type | Holds | Lives |
+|---|---|---|
+| `Config` | construction-time settings for a `New*` constructor | beside the type it configures |
+| `Options` | optional tuning of one call; the zero value is the default | above the function that takes it |
+| `Request` | the required inputs of one operation | above the function that takes it |
+
+- **Named from the package's vocabulary, never its name.** In package `user`, `CreateRequest` — not `UserCreateRequest`.
+- **Declared in the package that owns the function, immediately above it.** A parameter type is part of one signature, not a shared vocabulary; it moves to its own file only when several functions take it.
+- **`Config` and `Options` must be usable as `Config{}`.** A `Request` whose zero value is meaningless is validated by the function, not by the caller.
+
+An unexported function may simply take the parameters. The grouping exists to
+keep an exported signature readable at the call site.
+
 
 ## `context.Context` always first
 

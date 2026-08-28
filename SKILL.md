@@ -7,6 +7,12 @@ description: Enforces a coherent, prescriptive philosophy for writing Go
 
 A single subject, stated consistently across every layer. These rules are prescriptive — apply them as written.
 
+## Strictness
+
+These rules bind hardest at the exported surface, because a package's contract is the part its callers cannot change. Unexported code follows them by default, but the shape rules — parameter count and grouping, doc comments, interface size, constructors — yield where the domain reads better without them. An ergonomic, idiomatic package is the goal; the rules serve it, not the reverse.
+
+Never relaxed, exported or not: naming, `ctx` and `err`, no `init()`, no global `slog`, no `os.Getenv` outside `main`, no named returns, and the layering.
+
 ## Naming
 
 - **Full words only.** `Document` not `Doc`, `Request` not `Req`, `Response` not `Resp`, `Configuration` not `Cfg`, `Message` not `Msg`, `Error` not `Err` (as a name — `err` as a variable is correct).
@@ -73,6 +79,8 @@ See `references/functions.md` for detailed guidance on function design, methods,
 ## Package & File Organization
 
 - **Dependencies flow strictly downward:** Presentation → Service → Data. Never import upward or across layers.
+- **`main.go` at the repository root** for a single binary; `cmd/<name>/main.go` only once there is more than one. A `cmd/` holding one binary is noise.
+- **`main` wires and exits.** Logic lives in `func Run(ctx context.Context, ...) error`, which takes its dependencies as parameters so tests can call it without a process. `main` alone may call `os.Exit`, read the environment, or root a context.
 - **Presentation-layer packages under `internal/`.** HTTP handlers, CLI commands, and other I/O boundaries are not reusable and must not be importable externally.
 - **One purpose per package.** If naming a package is difficult, it needs splitting.
 - **File organization within a package:**
