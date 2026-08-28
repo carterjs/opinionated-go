@@ -118,6 +118,74 @@ func NewStore() Store { return &MemoryStore{} }
 ```
 
 
+## Absence has one spelling, chosen by the type
+
+Every signature that can come back empty-handed must say so, and the type decides how — not the author, not the call site, not the mood of the package.
+
+- **Records return a pointer.** Structs, and anything else with identity, signal absence with `nil`.
+- **Values return `(T, bool)`.** Primitives, and struct types with value semantics like `time.Time`, use the comma-ok idiom — the same shape as `v, ok := m[key]`. The bool is last and is read as `ok` at the call site.
+- **Collections have no absent state.** A nil slice and an empty slice are the same thing to every caller that ranges over one. Never `([]T, bool)`, never `*[]T`, never `(map[K]V, bool)`.
+
+```go
+// Do this
+func (store *Store) User(ctx context.Context, id string) (*User, error)      // record: nil is no user
+func (cache *Cache) TTL(key string) (time.Duration, bool)                    // value: ok is presence
+func (store *Store) Users(ctx context.Context) ([]User, error)               // collection: empty is empty
+
+// Not this
+func (store *Store) User(ctx context.Context, id string) (User, bool, error) // record spelled as a value
+func (cache *Cache) TTL(key string) *time.Duration                           // value spelled as a record
+func (store *Store) Users(ctx context.Context) ([]User, bool, error)         // collections are never absent
+```
+
+
+### Never both spellings
+
+`(*T, bool)` asks the caller to check twice and leaves `(nil, true)` undefined. The type has already picked the spelling — use it once.
+
+```go
+// Do this
+func (store *Store) User(ctx context.Context, id string) (*User, error)
+
+// Not this
+func (store *Store) User(ctx context.Context, id string) (*User, bool, error)
+```
+
+
+### Never a sentinel value
+
+`-1`, `""`, `0`, and `time.Time{}` are values, not signals. A caller that has to know `-1` means missing was owed a `bool`.
+
+```go
+// Do this
+func (index *Index) Offset(key string) (int, bool)
+
+// Not this
+func (index *Index) Offset(key string) int // returns -1 when absent
+```
+
+
+### `ok` is not an error
+
+A lookup that can legitimately miss returns `nil` or `ok`, and no error. A miss the caller cannot proceed past is an error — a sentinel from `errors.go`, and no bool. Since `error` is always the last return and `ok` is always the last return, no signature can carry both: `(T, bool, error)` offers two ways to fail and no rule for reading them.
+
+```go
+// Do this - a cache miss is ordinary
+func (cache *Cache) Token(key string) (string, bool)
+
+// Do this - a missing user is a failure the caller must handle
+func (store *Store) User(ctx context.Context, id string) (*User, error) // errors.Is(err, ErrUserNotFound)
+
+// Not this
+func (store *Store) User(ctx context.Context, id string) (*User, bool, error)
+```
+
+
+### The returned `ok` is the only bool a signature may carry
+
+Boolean *parameters* stay banned — they mean the function does two things. A returned `ok` switches nothing: it is the presence half of a value, and it always comes last.
+
+
 ## Function length: 60 lines maximum
 
 A function approaching 60 lines is a signal it's doing too much. Split it.

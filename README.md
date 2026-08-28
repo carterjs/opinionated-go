@@ -70,6 +70,8 @@ opinionated-go deliberately disagrees with some common Go advice. Where it does,
 - Interfaces belong to the consumer package, not the producer
 - Boolean parameters are banned — they mean a function does two things
 - Third-party HTTP frameworks are banned — `net/http` is the router
+- Absence has exactly one spelling per kind — `nil` for records, `(T, bool)` for values, and never both
+- Test functions are counted by API surface, not by behavior — new behavior is a new table row, not a new `Test*` function
 
 ## License
 
