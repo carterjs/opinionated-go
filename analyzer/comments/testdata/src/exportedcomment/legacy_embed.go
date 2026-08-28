@@ -7,5 +7,6 @@ import _ "embed"
 var LegacyEmbedFile string
 
 // ModernEmbedFile uses the correct syntax.
+//
 //go:embed testdata.txt
 var ModernEmbedFile string

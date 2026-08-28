@@ -84,6 +84,34 @@ Swapping `sqlite` for `postgres` changes only the wiring in `main`.
 See `references/error-handling.md` for how errors cross these boundaries.
 
 
+## Entry point
+
+`main` wires and exits — nothing else. Every decision the program makes belongs
+in `Run`, which takes what it needs as parameters and returns an error, so a
+test can call it without starting a process.
+
+```go
+func main() {
+  if err := Run(context.Background(), os.Args[1:], os.Stdout); err != nil {
+    fmt.Fprintln(os.Stderr, err)
+    os.Exit(1)
+  }
+}
+
+func Run(ctx context.Context, args []string, out io.Writer) error {
+  config, err := LoadConfig(args)
+  if err != nil {
+    return fmt.Errorf("load configuration: %w", err)
+  }
+  ...
+}
+```
+
+`main` is the only function that may call `os.Exit`, read the environment, or
+root a context. `Run` reaches all three through its parameters, which is what
+makes it testable.
+
+
 ## Presentation: HTTP
 
 The standard library wins. Route with `net/http` (`http.ServeMux` and method

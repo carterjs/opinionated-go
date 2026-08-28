@@ -7,6 +7,12 @@ description: Enforces a coherent, prescriptive philosophy for writing Go
 
 A single subject, stated consistently across every layer. These rules are prescriptive — apply them as written.
 
+## Strictness
+
+These rules bind hardest at the exported surface, because a package's contract is the part its callers cannot change. Unexported code follows them by default, but the shape rules — parameter count and grouping, doc comments, interface size, constructors — yield where the domain reads better without them. An ergonomic, idiomatic package is the goal; the rules serve it, not the reverse.
+
+Never relaxed, exported or not: naming, `ctx` and `err`, no `init()`, no global `slog`, no `os.Getenv` outside `main`, no named returns, and the layering.
+
 ## Naming
 
 - **Full words only.** `Document` not `Doc`, `Request` not `Req`, `Response` not `Resp`, `Configuration` not `Cfg`, `Message` not `Msg`, `Error` not `Err` (as a name — `err` as a variable is correct).
@@ -30,6 +36,10 @@ A single subject, stated consistently across every layer. These rules are prescr
 - All exported identifiers must have a godoc comment beginning with the identifier's name.
 - Unexported identifiers: comment only when the purpose is not clear from the name and context alone.
 - Inline comments: only when the *why* is non-obvious — a hidden constraint, subtle invariant, or known workaround.
+- **One sentence is the default length of a doc comment.** `// User returns the user with the given ID.` is finished. Earn a second sentence with something the caller cannot read off the signature — whether a returned pointer may be nil, who owns a passed slice, whether the call blocks, what invalidates the result. Prose that restates the signature has added nothing.
+- **Forty words is the ceiling for a declaration.** Past that, the material is package documentation or the declaration is doing too much. Extra material goes in a second paragraph after an empty `//` line and stays caveats — no tutorials, no worked examples in prose, no changelog.
+- **Inline comments are one line.** A *why* that needs three lines is a doc comment on the function, or a named helper whose name carries the explanation. Never let an inline comment run longer than the code it explains.
+- **Never comment the obvious.** `// increment the counter` above `count++` is noise. Delete it.
 - **Comments bump up against their symbol.** A blank line between a comment and the declaration below it makes it documentation for nothing. The same goes for a comment with no declaration under it at all — delete it or attach it.
 - **Empty `//` lines are fine as paragraph breaks** inside a multi-line comment; that is how godoc marks a new paragraph.
 - **Never use repeated characters as a divider.** No `// ─── Matching ───`, no `// -----`, no `// ///`. Grouping comments are not a substitute for splitting the file.
@@ -69,6 +79,8 @@ See `references/functions.md` for detailed guidance on function design, methods,
 ## Package & File Organization
 
 - **Dependencies flow strictly downward:** Presentation → Service → Data. Never import upward or across layers.
+- **`main.go` at the repository root** for a single binary; `cmd/<name>/main.go` only once there is more than one. A `cmd/` holding one binary is noise.
+- **`main` wires and exits.** Logic lives in `func Run(ctx context.Context, ...) error`, which takes its dependencies as parameters so tests can call it without a process. `main` alone may call `os.Exit`, read the environment, or root a context.
 - **Presentation-layer packages under `internal/`.** HTTP handlers, CLI commands, and other I/O boundaries are not reusable and must not be importable externally.
 - **One purpose per package.** If naming a package is difficult, it needs splitting.
 - **File organization within a package:**

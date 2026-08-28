@@ -40,12 +40,12 @@ func TestFunctionTooLong(t *testing.T) {
 
 func TestTooManyParameters(t *testing.T) {
 	t.Parallel()
-	analysistest.Run(t, analysistest.TestData(), structs.TooManyParameters, "toomanyparams")
+	analysistest.Run(t, analysistest.TestData(), structs.TooManyParameters, "toomanyparams", "paramcount")
 }
 
 func TestInterfaceTooLarge(t *testing.T) {
 	t.Parallel()
-	analysistest.Run(t, analysistest.TestData(), structs.InterfaceTooLarge, "interfacetoolarge")
+	analysistest.Run(t, analysistest.TestData(), structs.InterfaceTooLarge, "interfacetoolarge", "interfacesize")
 }
 
 func TestNoConstructorWithUnexportedFields(t *testing.T) {
@@ -56,4 +56,14 @@ func TestNoConstructorWithUnexportedFields(t *testing.T) {
 func TestMagicNumbers(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), structs.MagicNumbers, "magicnumbers")
+}
+
+func TestOsExitOutsideMain(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.OsExitOutsideMain, "osexit")
+}
+
+func TestMainDoesMoreThanWire(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), structs.MainDoesMoreThanWire, "mainwiring")
 }
