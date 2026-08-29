@@ -25,6 +25,7 @@ func main() {
 		naming.ContextAndErrorNaming,
 		naming.PackageNaming,
 		naming.FileNaming,
+		naming.OrphanTestFile,
 		naming.GenericPackageNames,
 		naming.JavaStyleGetters,
 		naming.VerbosePrefixMethods,

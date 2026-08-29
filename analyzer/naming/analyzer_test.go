@@ -48,6 +48,11 @@ func TestFileNaming(t *testing.T) {
 	analysistest.Run(t, analysistest.TestData(), naming.FileNaming, "filename")
 }
 
+func TestOrphanTestFile(t *testing.T) {
+	t.Parallel()
+	analysistest.Run(t, analysistest.TestData(), naming.OrphanTestFile, "orphantestfile")
+}
+
 func TestGenericPackageNames(t *testing.T) {
 	t.Parallel()
 	analysistest.Run(t, analysistest.TestData(), naming.GenericPackageNames, "generic")

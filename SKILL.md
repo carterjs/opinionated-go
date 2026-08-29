@@ -93,7 +93,7 @@ See `references/functions.md` for detailed guidance on function design, methods,
   - Prefer extending an existing file over creating a new one.
   - A new file is justified only when a self-contained concept has outgrown its current home.
 - **Delete dead code.** Never leave unused functions, variables, types, or imports.
-- **No `_test.go` file without a corresponding `.go` source file.**
+- **A `_test.go` file with no corresponding `.go` source file is worth a second look, not an automatic violation** — splitting tests by behavior across several source files (`document_rename_test.go`, `conformance_users_test.go`) is a legitimate convention. `export_test.go` is the exception that is always wrong: never expose unexported identifiers to external test packages that way.
 
 ## Layered Architecture
 

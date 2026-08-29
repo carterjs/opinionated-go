@@ -19,7 +19,7 @@ Tests are contracts that serve as documentation. Apply the same conventions as p
 - **`Test<TypeName>_<MethodName>`** for methods: `TestStore_Get`.
 - No other naming forms are acceptable — error.
 - No test function may cover unexported functionality directly — error. Test behavior through the public API.
-- **No `*_test.go` file without a corresponding `*.go` source file** — error. Exception: `export_test.go` is banned. Do not expose unexported identifiers to external test packages.
+- **A `*_test.go` file with no corresponding `*.go` source file is worth a second look** — warn, not error. A `<concept>_integration_test.go` file, or a file that deliberately tests one behavior across several source files rather than mirroring a single one (`document_rename_test.go`, `conformance_users_test.go`), is a legitimate convention; the warning exists to catch a genuinely orphaned leftover, not to force every test file into a 1:1 mapping. `export_test.go` is the one hard exception: it's banned outright, error — do not expose unexported identifiers to external test packages.
 
 ### Test cases
 

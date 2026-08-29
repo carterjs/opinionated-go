@@ -3,6 +3,8 @@ package naming
 import (
 	"go/ast"
 	"go/token"
+	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -82,6 +84,19 @@ var (
 		Doc:      "warn on file names with underscores (except _test.go and platform variants)",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runFileNaming,
+	}
+
+	// OrphanTestFile warns on a _test.go file with no corresponding source
+	// file, and errors on export_test.go outright. The warning is soft
+	// because splitting tests by behavior rather than by source file is a
+	// legitimate, common convention (conformance_users_test.go,
+	// document_rename_test.go) — this only flags it for a second look, not
+	// as an automatic violation.
+	OrphanTestFile = &analysis.Analyzer{
+		Name:     "orphan_test_file",
+		Doc:      "warn on a _test.go file with no corresponding .go source file; error on export_test.go outright",
+		Requires: []*analysis.Analyzer{inspect.Analyzer},
+		Run:      runOrphanTestFile,
 	}
 
 	// GenericPackageNames errors on overly generic package names.
@@ -683,6 +698,34 @@ func runFileNaming(pass *analysis.Pass) (interface{}, error) {
 
 	if strings.Contains(filename, "_") && !isValidTestOrPlatformFile(filename) {
 		pass.Reportf(pass.Files[0].Pos(), "file name %q should not contain underscores", filename)
+	}
+	return nil, nil
+}
+
+// runOrphanTestFile reports a _test.go file with no sibling source file to
+// test. It reads the real filesystem rather than pass.Files, because an
+// external test package (package foo_test) never sees foo.go's AST in its
+// own pass — only a directory listing can tell the two apart.
+func runOrphanTestFile(pass *analysis.Pass) (interface{}, error) {
+	for _, file := range pass.Files {
+		path := pass.Fset.Position(file.Pos()).Filename
+		base := filepath.Base(path)
+		if !strings.HasSuffix(base, "_test.go") {
+			continue
+		}
+		if base == "export_test.go" {
+			pass.Reportf(file.Pos(), "export_test.go is banned; do not expose unexported identifiers to external test packages")
+			continue
+		}
+		// The filename names the boundary under test, not one source file.
+		if strings.HasSuffix(base, "_integration_test.go") {
+			continue
+		}
+		sourceName := strings.TrimSuffix(base, "_test.go") + ".go"
+		sourcePath := filepath.Join(filepath.Dir(path), sourceName)
+		if _, err := os.Stat(sourcePath); err != nil {
+			pass.Reportf(file.Pos(), "%s has no corresponding %s; fine if it tests a behavior across several files, otherwise give it a source file or fold it into an existing test", base, sourceName)
+		}
 	}
 	return nil, nil
 }
