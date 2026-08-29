@@ -23,3 +23,10 @@ func (t Type) StutteringType() {}
 
 // Good: exact match to the package name is the eponymous-type idiom, no warning
 type Stuttering struct{}
+
+// Good: continues the same word (an agent noun of the package name) rather
+// than tacking on a new capitalized word, no warning
+type Stutterer struct{}
+
+// Good: same reasoning for a function name
+func Stutteringly() {}

@@ -1,7 +1,9 @@
 package singlelettervars
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"testing"
 )
 
@@ -100,4 +102,16 @@ func TestHelperOutsideTestFile(t *testing.T, values []string) {
 	}
 	t.Log("checked")
 	t.Log("done")
+}
+
+// Reassigning an existing idiomatic parameter with = is not a new
+// declaration, however far its later uses span.
+func TestReassignedParam(r *http.Request) {
+	r = r.WithContext(context.Background())
+	fmt.Println("one")
+	fmt.Println("two")
+	fmt.Println("three")
+	fmt.Println("four")
+	fmt.Println("five")
+	fmt.Println(r)
 }

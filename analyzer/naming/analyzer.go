@@ -501,11 +501,16 @@ func checkLocalVariables(pass *analysis.Pass, body *ast.BlockStmt, allowedContex
 		return
 	}
 
-	// Find every single-letter variable the body declares.
+	// Find every single-letter variable the body declares. A plain = is
+	// always a reassignment of a binding that already exists — a parameter,
+	// or an earlier := — never a new declaration, so only := counts here.
+	// Otherwise `r = r.WithContext(ctx)` on an *http.Request parameter reads
+	// as if r were freshly declared at the reassignment, and the span check
+	// below flags the parameter's own idiomatic name.
 	varDecls := make(map[string]token.Pos)
 	ast.Inspect(body, func(node ast.Node) bool {
 		assign, ok := node.(*ast.AssignStmt)
-		if !ok || (assign.Tok != token.ASSIGN && assign.Tok != token.DEFINE) {
+		if !ok || assign.Tok != token.DEFINE {
 			return true
 		}
 		for i, lhs := range assign.Lhs {
@@ -578,18 +583,83 @@ func runContextAndErrorNaming(pass *analysis.Pass) (interface{}, error) {
 		}
 	})
 
+	// A body that binds its own "err" elsewhere — a per-iteration or
+	// per-attempt error distinct from an outer accumulator — makes any other
+	// `var x error` in that body ineligible for the name err: renaming it
+	// would either shadow the nested err or silently stop the accumulator
+	// from being written to.
+	conflicting := funcBodiesWithErrBinding(inspect)
+
 	inspect.Preorder([]ast.Node{(*ast.ValueSpec)(nil)}, func(node ast.Node) {
 		spec := node.(*ast.ValueSpec)
 		if spec.Type != nil && typeString(spec.Type) == "error" {
 			for _, name := range spec.Names {
-				if name.Name != "err" && name.Name != "_" {
-					pass.Reportf(name.Pos(), "error variable should be named err, not %q", name.Name)
+				if name.Name == "err" || name.Name == "_" {
+					continue
 				}
+				if withinAny(conflicting, name.Pos()) {
+					continue
+				}
+				pass.Reportf(name.Pos(), "error variable should be named err, not %q", name.Name)
 			}
 		}
 	})
 
 	return nil, nil
+}
+
+// funcBodiesWithErrBinding returns the position ranges of every function or
+// closure body that binds its own "err" identifier via :=, somewhere within
+// it.
+func funcBodiesWithErrBinding(inspect *inspector.Inspector) [][2]token.Pos {
+	var ranges [][2]token.Pos
+	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.FuncLit)(nil)}, func(node ast.Node) {
+		var body *ast.BlockStmt
+		switch n := node.(type) {
+		case *ast.FuncDecl:
+			body = n.Body
+		case *ast.FuncLit:
+			body = n.Body
+		}
+		if body == nil || !bodyDefinesErr(body) {
+			return
+		}
+		ranges = append(ranges, [2]token.Pos{body.Pos(), body.End()})
+	})
+	return ranges
+}
+
+// bodyDefinesErr reports whether body contains a := that binds an
+// identifier named err.
+func bodyDefinesErr(body *ast.BlockStmt) bool {
+	found := false
+	ast.Inspect(body, func(node ast.Node) bool {
+		if found {
+			return false
+		}
+		assign, ok := node.(*ast.AssignStmt)
+		if !ok || assign.Tok != token.DEFINE {
+			return true
+		}
+		for _, lhs := range assign.Lhs {
+			if ident, ok := lhs.(*ast.Ident); ok && ident.Name == "err" {
+				found = true
+				return false
+			}
+		}
+		return true
+	})
+	return found
+}
+
+// withinAny reports whether pos falls within any of the given ranges.
+func withinAny(ranges [][2]token.Pos, pos token.Pos) bool {
+	for _, span := range ranges {
+		if pos >= span[0] && pos < span[1] {
+			return true
+		}
+	}
+	return false
 }
 
 func runPackageNaming(pass *analysis.Pass) (interface{}, error) {
@@ -638,6 +708,23 @@ func runGenericPackageNames(pass *analysis.Pass) (interface{}, error) {
 
 func isExported(name string) bool {
 	return len(name) > 0 && unicode.IsUpper(rune(name[0]))
+}
+
+// isStutter reports whether name repeats the package name as a genuine
+// compound — a new capitalized word tacked onto it, like AssetUpdate in
+// package asset. A name that exactly matches the package name (User in
+// package user) is the eponymous-type idiom, not a stutter. A name that
+// merely starts with the same letters because it continues the same English
+// word (Auditor, Slugify, AuthenticateBearer) is coincidence: the letters
+// after the package-name-length prefix carry on lowercase, rather than
+// starting a new word.
+func isStutter(name, pkgName string) bool {
+	lowerName, lowerPkg := strings.ToLower(name), strings.ToLower(pkgName)
+	if lowerName == lowerPkg || !strings.HasPrefix(lowerName, lowerPkg) {
+		return false
+	}
+	rest := []rune(name)[len([]rune(pkgName)):]
+	return len(rest) > 0 && unicode.IsUpper(rest[0])
 }
 
 func getTypeName(expr ast.Expr) string {
@@ -846,12 +933,7 @@ func runStutteringNames(pass *analysis.Pass) (interface{}, error) {
 			return
 		}
 
-		// A name that repeats the package name and adds nothing is the stutter
-		// this rule is after. A name that exactly matches the package name,
-		// case-insensitively, is the standard eponymous-type idiom instead
-		// (time.Time, url.URL, user.User) and is exempt.
-		lowerName, lowerPkg := strings.ToLower(name), strings.ToLower(pkgName)
-		if lowerName != lowerPkg && strings.HasPrefix(lowerName, lowerPkg) {
+		if isStutter(name, pkgName) {
 			pass.Reportf(pos, "%q is a stuttering name; avoid repeating the package name %q", name, pkgName)
 		}
 	})
