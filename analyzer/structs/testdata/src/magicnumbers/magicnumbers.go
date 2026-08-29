@@ -1,5 +1,7 @@
 package magicnumbers
 
+import "strconv"
+
 const (
 	maxUploadBytes = 10 << 20
 	retryLimit     = 3
@@ -35,4 +37,14 @@ func step(count int) int {
 
 func ratio() float64 {
 	return 0.75 // want "magic number 0.75"
+}
+
+// parseDecimal's 10 is a base, not a value anyone chose; not a magic number.
+func parseDecimal(s string) (int64, error) {
+	return strconv.ParseInt(s, 10, 64)
+}
+
+// formatHex's 16 is a base too.
+func formatHex(n int64) string {
+	return strconv.FormatInt(n, 16)
 }

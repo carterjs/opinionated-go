@@ -409,10 +409,15 @@ func delegatesToHarness(body *ast.BlockStmt) bool {
 	return len(body.List) > 0
 }
 
-// runTestParallel reports a test or subtest that does not open with t.Parallel().
+// runTestParallel reports a test or subtest that does not open with
+// t.Parallel(). A test or subtest that calls t.Setenv or t.Chdir anywhere
+// within it — including inside its own subtests — is exempt: both affect
+// process-wide state, and the testing package itself panics if either is
+// combined with a parallel ancestor, so requiring Parallel there would be
+// asking for code that cannot run.
 func runTestParallel(pass *analysis.Pass) (interface{}, error) {
 	forEachTestFunction(pass, func(fn *ast.FuncDecl) {
-		if !opensWithParallel(fn.Body) {
+		if !usesNonParallelSafeAPI(fn.Body) && !opensWithParallel(fn.Body) {
 			pass.Reportf(fn.Pos(), "%s does not call t.Parallel() as its first statement", fn.Name.Name)
 		}
 
@@ -425,6 +430,9 @@ func runTestParallel(pass *analysis.Pass) (interface{}, error) {
 			if !ok {
 				return true
 			}
+			if usesNonParallelSafeAPI(subtest.Body) {
+				return true
+			}
 			if !opensWithParallel(subtest.Body) {
 				pass.Reportf(subtest.Pos(), "subtest does not call t.Parallel() as its first statement")
 			}
@@ -432,6 +440,39 @@ func runTestParallel(pass *analysis.Pass) (interface{}, error) {
 		})
 	})
 	return nil, nil
+}
+
+// usesNonParallelSafeAPI reports whether body, or anything nested inside it,
+// calls t.Setenv or t.Chdir — the testing package's own documented
+// exceptions to running in parallel.
+func usesNonParallelSafeAPI(body *ast.BlockStmt) bool {
+	if body == nil {
+		return false
+	}
+	found := false
+	ast.Inspect(body, func(node ast.Node) bool {
+		if found {
+			return false
+		}
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := sel.X.(*ast.Ident)
+		if !ok || !testingReceivers[ident.Name] {
+			return true
+		}
+		if sel.Sel.Name == "Setenv" || sel.Sel.Name == "Chdir" {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }
 
 // checkCaseName reports the ways a case name stops being a sentence about the subject.

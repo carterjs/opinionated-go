@@ -1,6 +1,9 @@
 package recordvalue
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type User struct {
 	Name string
@@ -21,3 +24,12 @@ func (cache *Cache) Token(key string) (string, bool) { return "", false }
 func (cache *Cache) User(key string) (*User, error) { return nil, nil }
 
 func RecordByValue(id string) (User, bool) { return User{}, false } // want "recordvalue.User is a record"
+
+// FromAttributes decodes a record from several already-known inputs rather
+// than looking one up by identity, so a pointer would only cost an
+// allocation for no benefit.
+func FromAttributes(name string, age int) (User, bool) { return User{}, false }
+
+// UserByID is still a keyed lookup; context.Context does not count toward
+// the parameter total.
+func (cache *Cache) UserByID(ctx context.Context, id string) (User, bool) { return User{}, false } // want "recordvalue.User is a record"

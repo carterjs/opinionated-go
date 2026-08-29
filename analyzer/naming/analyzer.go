@@ -846,8 +846,12 @@ func runStutteringNames(pass *analysis.Pass) (interface{}, error) {
 			return
 		}
 
-		// Check if name starts with the package name (case-insensitive comparison)
-		if strings.HasPrefix(strings.ToLower(name), strings.ToLower(pkgName)) {
+		// A name that repeats the package name and adds nothing is the stutter
+		// this rule is after. A name that exactly matches the package name,
+		// case-insensitively, is the standard eponymous-type idiom instead
+		// (time.Time, url.URL, user.User) and is exempt.
+		lowerName, lowerPkg := strings.ToLower(name), strings.ToLower(pkgName)
+		if lowerName != lowerPkg && strings.HasPrefix(lowerName, lowerPkg) {
 			pass.Reportf(pos, "%q is a stuttering name; avoid repeating the package name %q", name, pkgName)
 		}
 	})

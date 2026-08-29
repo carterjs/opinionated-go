@@ -10,6 +10,49 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+// strconvBaseFuncs are strconv conversions whose non-string integer
+// arguments are a base or a bit size, not a value the author chose: the 10
+// in strconv.FormatInt(n, 10) means decimal, not a magic number to name.
+var strconvBaseFuncs = map[string]bool{
+	"FormatInt":    true,
+	"FormatUint":   true,
+	"AppendInt":    true,
+	"AppendUint":   true,
+	"ParseInt":     true,
+	"ParseUint":    true,
+	"ParseFloat":   true,
+	"ParseComplex": true,
+	"AppendFloat":  true,
+}
+
+// knownNumericIdiomLiterals collects the positions of integer literals that
+// are arguments to a strconv base/bit-size conversion, so runMagicNumbers can
+// leave them alone.
+func knownNumericIdiomLiterals(pass *analysis.Pass, decl ast.Decl) map[token.Pos]bool {
+	exempt := make(map[token.Pos]bool)
+	ast.Inspect(decl, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || !strconvBaseFuncs[sel.Sel.Name] {
+			return true
+		}
+		obj := pass.TypesInfo.Uses[sel.Sel]
+		if obj == nil || obj.Pkg() == nil || obj.Pkg().Path() != "strconv" {
+			return true
+		}
+		for _, arg := range call.Args {
+			if lit, ok := arg.(*ast.BasicLit); ok && lit.Kind == token.INT {
+				exempt[lit.Pos()] = true
+			}
+		}
+		return true
+	})
+	return exempt
+}
+
 const (
 	// maxParameters is the point past which a signature owes its callers a struct.
 	maxParameters = 4
@@ -510,6 +553,7 @@ func runMagicNumbers(pass *analysis.Pass) (interface{}, error) {
 			// The same number repeated within one declaration is one constant
 			// waiting to be named, so it is reported once at its first use.
 			reported := make(map[string]bool)
+			exempt := knownNumericIdiomLiterals(pass, decl)
 			ast.Inspect(decl, func(node ast.Node) bool {
 				lit, ok := node.(*ast.BasicLit)
 				if !ok {
@@ -518,7 +562,7 @@ func runMagicNumbers(pass *analysis.Pass) (interface{}, error) {
 				if lit.Kind != token.INT && lit.Kind != token.FLOAT {
 					return true
 				}
-				if allowedLiterals[lit.Value] || reported[lit.Value] {
+				if allowedLiterals[lit.Value] || reported[lit.Value] || exempt[lit.Pos()] {
 					return true
 				}
 				reported[lit.Value] = true

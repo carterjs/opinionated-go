@@ -29,7 +29,7 @@ Never relaxed, exported or not: naming, `ctx` and `err`, no `init()`, no global 
 - **Getter methods.** Use the Go idiom: `Name()` not `GetName()`. Setter methods are `SetField()`. Never `Get<Field>()` prefix.
 - **Package names.** Lowercase, single word, no underscores. Must match the directory name. Never `util`, `common`, `helpers`, `shared`, or similar generic names.
 - **File names.** No underscores except `_test.go` and `_<platform>_test.go` patterns. Name files after their primary concept (`store.go`, `schema.go`), never their role (`helpers.go`, `utils.go`).
-- **No stuttering names.** Exported names must not repeat the package name. In package `server`, use `Handler` not `ServerHandler`. In package `user`, use `Store` not `UserStore`.
+- **No stuttering names.** Exported names must not repeat the package name. In package `server`, use `Handler` not `ServerHandler`. In package `user`, use `Store` not `UserStore`. Exception: a name that exactly matches the package name is the standard eponymous-type idiom (`user.User`, `token.Token`, `time.Time`) and is not a stutter.
 
 ## Comments
 
@@ -37,8 +37,7 @@ Never relaxed, exported or not: naming, `ctx` and `err`, no `init()`, no global 
 - Unexported identifiers: comment only when the purpose is not clear from the name and context alone.
 - Inline comments: only when the *why* is non-obvious — a hidden constraint, subtle invariant, or known workaround.
 - **One sentence is the default length of a doc comment.** `// User returns the user with the given ID.` is finished. Earn a second sentence with something the caller cannot read off the signature — whether a returned pointer may be nil, who owns a passed slice, whether the call blocks, what invalidates the result. Prose that restates the signature has added nothing.
-- **Forty words is the ceiling for a declaration.** Past that, the material is package documentation or the declaration is doing too much. Extra material goes in a second paragraph after an empty `//` line and stays caveats — no tutorials, no worked examples in prose, no changelog.
-- **Inline comments are one line.** A *why* that needs three lines is a doc comment on the function, or a named helper whose name carries the explanation. Never let an inline comment run longer than the code it explains.
+- **Length is mostly a judgment call, not a hard limit.** A doc comment or inline comment that runs long because it is carrying a real invariant, a non-obvious *why*, or a subtle failure mode it prevents is doing its job — a thorough explanation spanning several sentences or a dense why-comment running a dozen-plus lines is not, on its own, a defect. The analyzer only pushes back at the extreme: past 250 words for a doc comment, or past 30 lines for an inline comment. Below that line, write what the invariant actually needs. Past it, the comment has usually stopped being about the declaration below it and started being a design document or a whole-package policy note — which belongs in the package comment, a doc comment scoped to what it is actually about, or its own note, not wedged above one symbol.
 - **Never comment the obvious.** `// increment the counter` above `count++` is noise. Delete it.
 - **Comments bump up against their symbol.** A blank line between a comment and the declaration below it makes it documentation for nothing. The same goes for a comment with no declaration under it at all — delete it or attach it.
 - **Empty `//` lines are fine as paragraph breaks** inside a multi-line comment; that is how godoc marks a new paragraph.

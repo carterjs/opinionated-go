@@ -20,10 +20,11 @@ var valueStructs = map[string]bool{
 }
 
 var (
-	// AbsenceSpelling errors when a signature spells absence twice, or spells a collection as absent.
+	// AbsenceSpelling errors on a pointer to a primitive, a pointer to a
+	// collection, or a struct pointer returned alongside an ok.
 	AbsenceSpelling = &analysis.Analyzer{
 		Name:     "absence_spelling",
-		Doc:      "error on a signature that returns both an ok and an error, both a pointer and an ok, or a collection that can be absent",
+		Doc:      "error on a pointer to a primitive or collection, or a struct pointer returned alongside an ok",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runAbsenceSpelling,
 	}
@@ -31,7 +32,7 @@ var (
 	// RecordValueWithBool warns when a record type is returned by value alongside an ok.
 	RecordValueWithBool = &analysis.Analyzer{
 		Name:     "record_value_with_bool",
-		Doc:      "warn when a struct with identity is returned by value alongside an ok; records spell absence with a pointer",
+		Doc:      "warn when a struct with identity is returned by value alongside an ok from what looks like a keyed lookup; records spell absence with a pointer",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runRecordValueWithBool,
 	}
@@ -45,40 +46,35 @@ var (
 	}
 )
 
+// runAbsenceSpelling reports two things this analyzer can actually justify:
+// a pointer to something that was never a record in the first place (a
+// primitive, or a collection, which already spells absence as nil), and a
+// struct pointer returned alongside an ok — nil already says "absent," so
+// the ok is redundant when they agree and undefined when they do not. A
+// struct returned by value alongside an ok, the comma-ok idiom, is not
+// flagged here; see [RecordValueWithBool] for when that shape earns a
+// pointer instead.
 func runAbsenceSpelling(pass *analysis.Pass) (interface{}, error) {
 	forEachSignature(pass, func(fn *ast.FuncDecl, results []types.Type) {
-		var values, pointers, collections int
-		var hasBool, hasError bool
+		var hasBool bool
+		var structPointers []types.Type
 		for _, result := range results {
 			switch {
-			case isError(result):
-				hasError = true
 			case isBool(result):
 				hasBool = true
 			case isPointerToCollection(result):
 				pass.Reportf(fn.Pos(), "a nil slice is an empty slice; return the collection itself, not a pointer to it")
-				pointers++
-				values++
+			case isPointerToStruct(result):
+				structPointers = append(structPointers, result)
 			case isPointer(result):
-				pointers++
-				values++
-			case isCollection(result):
-				collections++
-				values++
-			default:
-				values++
+				pass.Reportf(fn.Pos(), "%s is a pointer to a primitive; return the value, or (value, bool) if the zero value is ambiguous with absence", result.String())
 			}
 		}
-
-		// A lone (bool, error) answers with its bool, as regexp.MatchString does; only a bool beside a value is an ok.
-		if hasBool && hasError && values > 0 {
-			pass.Reportf(fn.Pos(), "a signature returns ok or error, never both; a legitimate miss returns ok, a miss the caller cannot pass returns a sentinel error")
+		if !hasBool {
+			return
 		}
-		if hasBool && pointers > 0 {
-			pass.Reportf(fn.Pos(), "a record spells absence with nil; returning both a pointer and an ok leaves (nil, true) undefined")
-		}
-		if hasBool && collections > 0 {
-			pass.Reportf(fn.Pos(), "a collection has no absent state; a nil slice and an empty slice are the same to every caller")
+		for _, structPointer := range structPointers {
+			pass.Reportf(fn.Pos(), "%s is a pointer alongside an ok; nil already spells absence, so the two agree redundantly or, when they disagree, undefined — return one or the other", structPointer.String())
 		}
 	})
 	return nil, nil
@@ -96,14 +92,47 @@ func runRecordValueWithBool(pass *analysis.Pass) (interface{}, error) {
 				records = append(records, result)
 			}
 		}
-		if !hasBool {
+		if !hasBool || len(records) == 0 {
 			return
 		}
+
+		// A lookup keyed by a single identifying parameter is the pattern this
+		// rule is after: a store-style accessor whose "not found" case should
+		// be an unambiguous nil, not a same-shaped zero value indistinguishable
+		// from a legitimately empty record. A function assembling a record from
+		// several already-known inputs — a decoder, a parser — has no identity
+		// to look up; its ok is the same comma-ok idiom as a map read, and
+		// forcing a pointer there only adds an allocation for no benefit.
+		if nonContextParamCount(pass, fn.Type.Params) > 1 {
+			return
+		}
+
 		for _, record := range records {
 			pass.Reportf(fn.Pos(), "%s is a record; return *%s and spell absence with nil, or add it to the value types if it has value semantics", record.String(), record.String())
 		}
 	})
 	return nil, nil
+}
+
+// nonContextParamCount counts a signature's parameters, excluding
+// context.Context: it carries no identity, so it should not count toward
+// whether a call looks like a keyed lookup.
+func nonContextParamCount(pass *analysis.Pass, params *ast.FieldList) int {
+	if params == nil {
+		return 0
+	}
+	count := 0
+	for _, field := range params.List {
+		if t := pass.TypesInfo.TypeOf(field.Type); t != nil && t.String() == "context.Context" {
+			continue
+		}
+		n := len(field.Names)
+		if n == 0 {
+			n = 1
+		}
+		count += n
+	}
+	return count
 }
 
 func runAdjacentSameTypeParameters(pass *analysis.Pass) (interface{}, error) {
@@ -165,10 +194,6 @@ func isBool(target types.Type) bool {
 	return ok && basic.Kind() == types.Bool
 }
 
-func isError(target types.Type) bool {
-	return target.String() == "error"
-}
-
 func isPointer(target types.Type) bool {
 	_, ok := target.Underlying().(*types.Pointer)
 	return ok
@@ -188,6 +213,18 @@ func isPointerToCollection(target types.Type) bool {
 		return false
 	}
 	return isCollection(pointer.Elem())
+}
+
+// isPointerToStruct reports whether target is a pointer whose element is a
+// struct — the shape that already has a record's identity, as opposed to a
+// pointer to a primitive or a collection.
+func isPointerToStruct(target types.Type) bool {
+	pointer, ok := target.Underlying().(*types.Pointer)
+	if !ok {
+		return false
+	}
+	_, ok = pointer.Elem().Underlying().(*types.Struct)
+	return ok
 }
 
 // isRecordValue reports whether target is a named struct passed by value, which owes its callers a pointer instead.

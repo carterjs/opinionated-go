@@ -1,13 +1,15 @@
 package doclength
 
-// Parse reads the document and returns it.
-func Parse(data []byte) error { return nil }
+// Small explains itself in a couple of sentences, well inside the limit.
+type Small struct{}
 
-// Format renders the document to a string. The returned string is freshly
-// allocated, so the caller owns it and may hold it past the next call. Blocks
-// only on the writer it was handed at construction. This last sentence exists
-// purely to carry the comment past the ceiling, which it now does.
-func Format(data []byte) string { return "" } // want "doc comment on Format runs"
+// Reasonable carries a longer but still normal explanation of a real
+// invariant: why a field means what it means, what breaks if a caller
+// assumes otherwise, and what the correct call site does instead. This kind
+// of thorough why-comment is exactly what the rule is not supposed to catch,
+// even though it runs well past one sentence and into a couple of paragraphs
+// of genuine reasoning about the design.
+type Reasonable struct{}
 
-// Store holds documents.
-type Store struct{}
+// Big is a struct with an extraordinarily long doc comment. filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler filler.
+type Big struct{} // want "doc comment on Big runs [0-9]+ words, past the 250-word mark"

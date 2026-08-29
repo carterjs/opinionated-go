@@ -27,25 +27,37 @@ var (
 		Run:      runDetachedComment,
 	}
 
-	// DocCommentTooLong warns on a doc comment that has outgrown its declaration.
+	// DocCommentTooLong warns on a doc comment at an extraordinary length —
+	// well past what a thorough why-comment needs, into territory that reads
+	// as a design document attached to one declaration.
 	DocCommentTooLong = &analysis.Analyzer{
 		Name:     "doc_comment_too_long",
-		Doc:      "warn on a doc comment longer than 40 words; past that it is package documentation, or the declaration is doing too much",
+		Doc:      "warn on a doc comment past 250 words; a thorough explanation is welcome, an essay belongs in the package comment",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runDocCommentTooLong,
 	}
 
-	// InlineCommentTooLong warns on an inline comment that runs past one line.
+	// InlineCommentTooLong warns on an inline comment at an extraordinary
+	// length — past what a dense but targeted why-comment needs.
 	InlineCommentTooLong = &analysis.Analyzer{
 		Name:     "inline_comment_too_long",
-		Doc:      "warn on a multi-line inline comment; a why that needs more than a line is a doc comment or a named helper",
+		Doc:      "warn on an inline comment past 30 lines; that is no longer a comment on the code below it, it is a document",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runInlineCommentTooLong,
 	}
 )
 
-// maxDocWords is the point past which a doc comment has stopped documenting one declaration.
-const maxDocWords = 40
+// maxDocWords is set well past this codebase's longest legitimate doc
+// comment (a 241-word explanation of a resolver's invariants) so the rule
+// only fires on something qualitatively different: an essay, not a thorough
+// why.
+const maxDocWords = 250
+
+// maxInlineCommentLines is set well past the routine range for a dense
+// why-comment (single digits, occasionally into the teens) so the rule
+// leaves those alone and only catches a comment that has stopped explaining
+// the code below it and started documenting a whole subsystem.
+const maxInlineCommentLines = 30
 
 func runExportedCommentFormat(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
@@ -268,12 +280,12 @@ func isExported(name string) bool {
 	return len(name) > 0 && name[0] >= 'A' && name[0] <= 'Z'
 }
 
-// runDocCommentTooLong reports a doc comment that has outgrown its
-// declaration. Words are counted rather than sentences because no sentence
-// count can tell "e.g." or a URL from a full stop.
+// runDocCommentTooLong reports a doc comment past maxDocWords. Words are
+// counted rather than sentences because no sentence count can tell "e.g." or
+// a URL from a full stop.
 func runDocCommentTooLong(pass *analysis.Pass) (interface{}, error) {
-	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
-	inspect.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.GenDecl)(nil)}, func(node ast.Node) {
+	insp := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
+	insp.Preorder([]ast.Node{(*ast.FuncDecl)(nil), (*ast.GenDecl)(nil)}, func(node ast.Node) {
 		var doc *ast.CommentGroup
 		var name string
 		switch decl := node.(type) {
@@ -287,25 +299,27 @@ func runDocCommentTooLong(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		if words := countDocWords(doc); words > maxDocWords {
-			pass.Reportf(node.Pos(), "doc comment on %s runs %d words; keep a declaration to %d and move the rest to the package comment", name, words, maxDocWords)
+			pass.Reportf(node.Pos(), "doc comment on %s runs %d words, past the %d-word mark; move it to the package comment or split it up", name, words, maxDocWords)
 		}
 	})
 	return nil, nil
 }
 
-// runInlineCommentTooLong reports an inline comment group spanning more than one line.
+// runInlineCommentTooLong reports an inline comment group past maxInlineCommentLines.
 func runInlineCommentTooLong(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		documented := documentedPositions(file)
 		for _, group := range file.Comments {
-			if documented[group.Pos()] || len(group.List) < 2 {
+			if documented[group.Pos()] {
 				continue
 			}
 			if isDirective(group.List[0].Text) {
 				continue
 			}
 			lines := pass.Fset.Position(group.End()).Line - pass.Fset.Position(group.Pos()).Line + 1
-			pass.Reportf(group.Pos(), "inline comment runs %d lines; a why that needs more than one line is a doc comment on the function or a named helper", lines)
+			if lines > maxInlineCommentLines {
+				pass.Reportf(group.Pos(), "inline comment runs %d lines, past the %d-line mark; that is package documentation or a design note, not a comment on the code below it", lines, maxInlineCommentLines)
+			}
 		}
 	}
 	return nil, nil

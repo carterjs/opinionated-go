@@ -23,12 +23,19 @@ func (store *Store) Seen(key string) (time.Time, bool) { return time.Time{}, fal
 // MatchString reports whether the pattern matches, which is the answer, not an ok.
 func MatchString(pattern, value string) (bool, error) { return false, nil }
 
-func BothSpellings(id string) (*User, bool) { return nil, false } // want "a record spells absence with nil"
+func BothSpellings(id string) (*User, bool) { return nil, false } // want "is a pointer alongside an ok"
 
-func OkAndError(id string) (string, bool, error) { return "", false, nil } // want "a signature returns ok or error, never both"
+// OkAndError is no longer flagged: whether ok and error may coexist is a
+// judgment call this analyzer does not have a well-defined rule for.
+func OkAndError(id string) (string, bool, error) { return "", false, nil }
 
-func CollectionOk(id string) ([]User, bool) { return nil, false } // want "a collection has no absent state"
+// CollectionOk and MapOk are no longer flagged: a nil slice or map already
+// reads as absent to every caller, so pairing one with an ok is not the kind
+// of ambiguity this analyzer is after.
+func CollectionOk(id string) ([]User, bool) { return nil, false }
 
-func MapOk(id string) (map[string]User, bool) { return nil, false } // want "a collection has no absent state"
+func MapOk(id string) (map[string]User, bool) { return nil, false }
 
 func PointerToSlice(id string) (*[]User, error) { return nil, nil } // want "a nil slice is an empty slice"
+
+func PrimitivePointer(id string) (*string, error) { return nil, nil } // want "is a pointer to a primitive"

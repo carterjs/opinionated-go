@@ -55,13 +55,24 @@ func helper() error {
 
 type store struct{}
 
-// Load is exported even though its receiver is not.
-func (s *store) Load() error { // want "Load returns an error without wrapping"
+// Load has a capitalized name (Go requires that to satisfy some interfaces),
+// but its receiver type is unexported, so it is not part of this package's
+// public API and is exempt.
+func (s *store) Load() error {
 	err := helper()
 	return err
 }
 
 func (s *store) load() error {
+	err := helper()
+	return err
+}
+
+// Server is exported, so its methods are the real API boundary.
+type Server struct{}
+
+// Serve is on an exported receiver and must wrap.
+func (s *Server) Serve() error { // want "Serve returns an error without wrapping"
 	err := helper()
 	return err
 }

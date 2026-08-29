@@ -11,10 +11,15 @@ import (
 )
 
 var (
-	// NakedErrorReturn errors on an exported function returning an [error] without wrapping. Unexported functions are exempt: their caller is the boundary and adds the context.
+	// NakedErrorReturn errors on an exported function or method returning an
+	// [error] without wrapping. Unexported functions are exempt: their caller
+	// is the boundary and adds the context. So are methods on an unexported
+	// receiver type and test files: a capitalized method on an internal type
+	// (an io.Reader wrapper, a test fake) is not part of the package's public
+	// API just because Go requires capitalization to satisfy an interface.
 	NakedErrorReturn = &analysis.Analyzer{
 		Name:     "naked_error_return",
-		Doc:      "error on exported functions returning an error without wrapping",
+		Doc:      "error on exported functions and methods, on exported receiver types, returning an error without wrapping",
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
 		Run:      runNakedErrorReturn,
 	}
@@ -72,6 +77,14 @@ func runNakedErrorReturn(pass *analysis.Pass) (interface{}, error) {
 		if fn.Body == nil || !isExported(fn.Name.Name) {
 			return
 		}
+		if strings.HasSuffix(pass.Fset.Position(fn.Pos()).Filename, "_test.go") {
+			return
+		}
+		if fn.Recv != nil && len(fn.Recv.List) > 0 {
+			if receiver := receiverTypeName(fn.Recv.List[0].Type); receiver != "" && !isExported(receiver) {
+				return
+			}
+		}
 
 		// One finding per function. A function that hands err back in four
 		// places has one habit, not four defects.
@@ -102,6 +115,21 @@ func runNakedErrorReturn(pass *analysis.Pass) (interface{}, error) {
 
 func isExported(name string) bool {
 	return len(name) > 0 && name[0] >= 'A' && name[0] <= 'Z'
+}
+
+// receiverTypeName returns the bare type name a method hangs off.
+func receiverTypeName(expr ast.Expr) string {
+	switch receiver := expr.(type) {
+	case *ast.StarExpr:
+		return receiverTypeName(receiver.X)
+	case *ast.Ident:
+		return receiver.Name
+	case *ast.IndexExpr:
+		return receiverTypeName(receiver.X)
+	case *ast.IndexListExpr:
+		return receiverTypeName(receiver.X)
+	}
+	return ""
 }
 
 func runStringErrorMatching(pass *analysis.Pass) (interface{}, error) {

@@ -20,3 +20,6 @@ func stutteringFunction() {}
 
 // Good: method, no warning
 func (t Type) StutteringType() {}
+
+// Good: exact match to the package name is the eponymous-type idiom, no warning
+type Stuttering struct{}
