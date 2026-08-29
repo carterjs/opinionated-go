@@ -1,3 +1,36 @@
 {
-  "version": 1
+  "version": 1,
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in *.go) gofmt -w \"$f\" 2>/dev/null; out=$(go build ./... 2>&1); if [ -n \"$out\" ]; then jq -n --arg f \"$f\" --arg r \"$out\" '{decision:\"block\",reason:(\"go build ./... failed after editing \"+$f+\":\\n\"+$r)}'; fi ;; esac; }",
+            "timeout": 30,
+            "statusMessage": "gofmt + go build"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "out=$( { go build ./... && go vet ./... && go test ./...; } 2>&1 ); rc=$?; fmt=$(gofmt -l . 2>/dev/null); if [ $rc -ne 0 ] || [ -n \"$fmt\" ]; then { [ $rc -ne 0 ] && printf 'go build/vet/test failed:\\n%s\\n' \"$out\"; [ -n \"$fmt\" ] && printf 'gofmt needs to run on:\\n%s\\n' \"$fmt\"; } | jq -Rsc '{decision:\"block\",reason:.}'; fi",
+            "timeout": 120,
+            "statusMessage": "go build && go vet && go test"
+          },
+          {
+            "type": "command",
+            "command": "if [ -n \"$OPINIONATED_GO_LINT_TARGET\" ] && [ -d \"$OPINIONATED_GO_LINT_TARGET\" ]; then bin=$(mktemp -t opinionated-go-analyzer.XXXXXX); go build -o \"$bin\" ./analyzer 2>/dev/null && count=$(cd \"$OPINIONATED_GO_LINT_TARGET\" && \"$bin\" ./... 2>&1 1>/dev/null | wc -l | tr -d ' '); rm -f \"$bin\"; if [ -n \"$count\" ]; then jq -n --arg c \"$count\" --arg t \"$OPINIONATED_GO_LINT_TARGET\" '{systemMessage:(\"opinionated-go: \"+$c+\" findings against \"+$t)}'; fi; fi",
+            "timeout": 60,
+            "statusMessage": "optional: lint OPINIONATED_GO_LINT_TARGET"
+          }
+        ]
+      }
+    ]
+  }
 }

@@ -59,7 +59,27 @@ go run github.com/carterjs/opinionated-go/analyzer@latest ./...
 
 ### With agent hooks
 
-See `.claude/hooks.json` in this repository for the Claude Code hook configuration.
+Add a hook to `.claude/settings.json` in your own project so Claude Code runs the analyzer against a file right after writing or editing it:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in *.go) go run github.com/carterjs/opinionated-go/analyzer@latest \"$f\" ;; esac; }"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+(This repo's own `.claude/settings.json` runs a different set of hooks: `gofmt`/`go build` after editing a file under `analyzer/`, and `go build && go vet && go test` before Claude stops — for developing the analyzer itself, not for linting a project with it. If you're contributing here, that's the config to look at instead of the snippet above.)
 
 ## Opinions
 
